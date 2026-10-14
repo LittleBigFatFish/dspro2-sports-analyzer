@@ -7,6 +7,7 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+.ipynb_checkpoints/
 
 # Local PyCharm configuration
 .idea/
@@ -19,14 +20,14 @@ dist/
 # Local datasets, model weights and generated results
 /data/
 /models/
-/runs/
 /outputs/
+/runs/
+/wandb/
+
+# Model files downloaded or exported outside models/
 *.pt
 *.onnx
 *.engine
-
-# Experiment tracking files
-/wandb/
 
 # Operating system files
 .DS_Store
