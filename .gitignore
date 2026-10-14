@@ -1,0 +1,33 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Local PyCharm configuration
+.idea/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Local datasets, model weights and generated results
+/data/
+/models/
+/runs/
+/outputs/
+*.pt
+*.onnx
+*.engine
+
+# Experiment tracking files
+/wandb/
+
+# Operating system files
+.DS_Store
+Thumbs.db
