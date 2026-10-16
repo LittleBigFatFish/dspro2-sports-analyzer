@@ -1,0 +1,10 @@
+# Paths are relative to the repository root, not to this YAML file.
+images: data/samples
+labels: data/sample-labels
+# Change to data.yml if that is the actual filename on your machine.
+dataset_yaml: data/source-metadata/data.yaml
+model: models/yolo26n.pt
+output: outputs/baseline
+image_sizes: [640, 1280]
+confidence: 0.25
+match_iou: 0.50
