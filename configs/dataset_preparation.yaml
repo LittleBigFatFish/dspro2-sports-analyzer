@@ -1,0 +1,10 @@
+dataset_root: data/raw/football-image-dataset
+# Relative to dataset_root; change to data.yml if that is the actual filename.
+dataset_yaml: data.yaml
+output: outputs/dataset_preparation
+expected_names: [ball, player, referee]
+seed: 42
+samples_per_split: 3
+tiny_side_pixels: 5
+# dHash candidates require visual review; this is not proof of leakage.
+near_duplicate_distance: 4
