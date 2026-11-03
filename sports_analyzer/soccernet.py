@@ -29,16 +29,26 @@ def role_class(role: str):
     raise ValueError(f'Unknown SoccerNet role {role!r}')
 
 
+def role_parts(role: str):
+    # 'goalkeepers team left' -> ('goalkeeper', 'left'), others get team 'none'.
+    words = role.strip().lower().split()
+    kind = words[0].rstrip('s') if words[0].startswith('goalkeeper') else words[0]
+    team = words[-1] if len(words) == 3 and words[1] == 'team' else 'none'
+    return kind, team
+
+
 def read_clip(clip_dir):
     clip_dir = Path(clip_dir)
     parser = ConfigParser(interpolation=None)
     if not parser.read(clip_dir / 'gameinfo.ini', encoding='utf-8'):
         raise FileNotFoundError(f'Missing {clip_dir / "gameinfo.ini"}')
     info = parser['Sequence']
-    tracks = {}
+    tracks, jerseys = {}, {}
     for key, value in info.items():
         if key.startswith('trackletid_'):
-            tracks[int(key.split('_', 1)[1])] = value.split(';', 1)[0].strip().lower()
+            role, _, jersey = value.partition(';')
+            tracks[int(key.split('_', 1)[1])] = role.strip().lower()
+            jerseys[int(key.split('_', 1)[1])] = jersey.strip()
     seq = ConfigParser(interpolation=None)
     seq.read(clip_dir / 'seqinfo.ini', encoding='utf-8')
     meta = seq['Sequence'] if seq.has_section('Sequence') else info
@@ -57,6 +67,7 @@ def read_clip(clip_dir):
             rows.append(dict(frame=frame, track=track, role=tracks[track],
                              x=x, y=y, w=w, h=h, conf=conf))
     return dict(clip=clip_dir.name, game=info.get('gameid', '').strip(), tracks=tracks, rows=rows,
+                jerseys=jerseys, action=info.get('actionclass', '').strip(),
                 image_dir=clip_dir / meta.get('imdir', 'img1').strip(),
                 extension=meta.get('imext', '.jpg').strip(), length=int(meta['seqlength']),
                 width=int(meta['imwidth']), height=int(meta['imheight']))
@@ -110,11 +121,16 @@ def build_view(split_dir, output_dir, split, step):
     output_dir.mkdir(parents=True, exist_ok=False)
     image_root.mkdir(parents=True)
     label_root.mkdir(parents=True)
-    counts, roles, source_roles = Counter(), Counter(), Counter()
-    frames, ignores, clipped, games = [], [], [], {}
+    counts, roles, source_roles, actions = Counter(), Counter(), Counter(), Counter()
+    frames, ignores, clipped, tracks, games = [], [], [], [], {}
     for clip in clips:
         games[clip['clip']] = clip['game']
+        actions[clip['action']] += 1
         source_roles.update(clip['tracks'].values())
+        for track, role in clip['tracks'].items():
+            if role_parts(role)[1] != 'none':
+                counts['team_tracks'] += 1
+                counts['team_tracks_numeric_jersey'] += clip['jerseys'][track].isdigit()
         by_frame = {}
         for row in clip['rows']:
             roles[row['role']] += 1
@@ -151,26 +167,33 @@ def build_view(split_dir, output_dir, split, step):
                 else:
                     lines.append(yolo_line(class_id, xyxy, clip['width'], clip['height']))
                 counts[f'boxes_{label}'] += 1
+                kind, team = role_parts(row['role'])
+                tracks.append(dict(image=image, clip=clip['clip'], frame=frame, x1=xyxy[0], y1=xyxy[1],
+                                   x2=xyxy[2], y2=xyxy[3], label=label, track=row['track'], role=kind,
+                                   team=team, jersey=clip['jerseys'][row['track']]))
             (label_root / f'{name}.txt').write_text(''.join(f'{v}\n' for v in lines), encoding='utf-8')
             counts['frames'] += 1
             counts['empty_frames'] += not lines
             frames.append(dict(image=image, clip=clip['clip'], game=clip['game'], frame=frame))
     tables = {'frames': (['image', 'clip', 'game', 'frame'], frames),
               'ignore': (['image', 'x1', 'y1', 'x2', 'y2'], ignores),
-              'clipped': (['image', 'track', 'label', 'x', 'y', 'w', 'h', 'kept'], clipped)}
+              'clipped': (['image', 'track', 'label', 'x', 'y', 'w', 'h', 'kept'], clipped),
+              'tracks': (['image', 'clip', 'frame', 'x1', 'y1', 'x2', 'y2', 'label', 'track', 'role',
+                          'team', 'jersey'], tracks)}
     for name, (columns, rows) in tables.items():
         with (output_dir / f'{name}.csv').open('w', newline='', encoding='utf-8') as stream:
             writer = csv.DictWriter(stream, fieldnames=columns)
             writer.writeheader()
             writer.writerows(rows)
     (output_dir / 'data.yaml').write_text(
-        f'path: .\ntest: images/{split}\nnc: {len(NAMES)}\nnames:\n'
+        f'path: .\n{split}: images/{split}\nnc: {len(NAMES)}\nnames:\n'
         + ''.join(f'  {k}: {v}\n' for k, v in NAMES.items()), encoding='utf-8')
     manifest = dict(source=str(Path(split_dir).resolve()), split=split, step=step,
                     clips=len(games), games=sorted(set(games.values()), key=lambda g: (len(g), g)), clip_games=games,
                     names=NAMES, counts=dict(sorted(counts.items())),
                     source_boxes_by_role=dict(sorted(roles.items())),
                     source_tracks_by_role=dict(sorted(source_roles.items())),
+                    action_classes=dict(actions.most_common()),
                     files={f'{name}.csv': sha256(output_dir / f'{name}.csv') for name in tables},
                     code_sha256=sha256(Path(__file__)), images='hardlinks to source frames',
                     created_utc=datetime.now(timezone.utc).isoformat())

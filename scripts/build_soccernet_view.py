@@ -107,7 +107,7 @@ def main():
                created_utc=datetime.now(timezone.utc).isoformat())
     (target / 'manifest.json').write_text(json.dumps(run, indent=2), encoding='utf-8')
     print(json.dumps(dict(run=str(target), view=str(view), counts=manifest['counts'],
-                          games=manifest['games'], overlays=overlays), indent=2))
+                          games=games, actions=manifest['action_classes'], overlays=overlays), indent=2))
 
 
 if __name__ == '__main__':

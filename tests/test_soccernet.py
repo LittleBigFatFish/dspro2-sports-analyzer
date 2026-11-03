@@ -8,9 +8,9 @@ from PIL import Image
 
 from sports_analyzer.annotations.yolo import read_labels
 from sports_analyzer.soccernet import (IGNORE, NAMES, assert_disjoint_games, build_view,
-                                       role_class, split_games)
+                                       role_class, role_parts, split_games)
 
-ROLES = {1: 'ball;1', 2: 'player team left;7', 3: 'goalkeepers team right;1',
+ROLES = {1: 'ball;1', 2: 'player team left;A', 3: 'goalkeepers team right;1',
          4: 'referee;main', 5: 'other;coach'}
 GT = [(1, 1, 50, 40, 6, 6), (1, 2, 10, 10, 20, 30), (1, 3, 60, 20, 10, 25),
       (1, 4, 30, 50, 8, 20), (1, 5, 70, 60, 20, 10), (3, 2, -5, 70, 15, 20),
@@ -26,7 +26,7 @@ def write_clip(root, name, game, length=4, width=100, height=80):
     tracks = ''.join(f'trackletID_{k}= {v}\n' for k, v in ROLES.items())
     (clip / 'gameinfo.ini').write_text(
         f'[Sequence]\nname={name}\nimDir=img1\nframeRate=25\nseqLength={length}\n'
-        f'imWidth={width}\nimHeight={height}\nimExt=.jpg\ngameID={game}\n{tracks}')
+        f'imWidth={width}\nimHeight={height}\nimExt=.jpg\ngameID={game}\nactionClass=Goal\n{tracks}')
     (clip / 'gt' / 'gt.txt').write_text(''.join(f'{f},{t},{x},{y},{w},{h},1,-1,-1,-1\n'
                                                 for f, t, x, y, w, h in GT))
     return clip
@@ -84,6 +84,25 @@ class SoccerNetTests(unittest.TestCase):
         self.assertEqual(json.loads((self.view / 'manifest.json').read_text())['step'], 2)
         with self.assertRaises(FileExistsError):
             build_view(self.split, self.view, 'test', 2)
+
+    def test_tracks_keep_team_and_jersey(self):
+        self.assertEqual([role_parts(r) for r in ('player team left', 'goalkeepers team right',
+                                                  'goalkeeper team left', 'referee', 'ball', 'other')],
+                         [('player', 'left'), ('goalkeeper', 'right'), ('goalkeeper', 'left'),
+                          ('referee', 'none'), ('ball', 'none'), ('other', 'none')])
+        manifest = build_view(self.split, self.view, 'test', 2)
+        with (self.view / 'tracks.csv').open() as stream:
+            rows = list(csv.DictReader(stream))
+        self.assertEqual(len(rows), sum(manifest['counts'][f'boxes_{k}'] for k in [*NAMES.values(), IGNORE]))
+        first = {r['track']: r for r in rows if r['image'].endswith('SNMOT-001_000001.jpg')}
+        self.assertEqual({k: (v['label'], v['role'], v['team'], v['jersey']) for k, v in first.items()},
+                         {'1': ('ball', 'ball', 'none', '1'), '2': ('player', 'player', 'left', 'A'),
+                          '3': ('player', 'goalkeeper', 'right', '1'),
+                          '4': ('referee', 'referee', 'none', 'main'), '5': (IGNORE, 'other', 'none', 'coach')})
+        self.assertEqual((first['2']['x1'], first['2']['y2']), ('10.0', '40.0'))
+        self.assertEqual((manifest['counts']['team_tracks'], manifest['counts']['team_tracks_numeric_jersey']),
+                         (4, 2))
+        self.assertEqual(manifest['action_classes'], {'Goal': 2})
 
     def test_unknown_track_and_game_overlap(self):
         self.assertEqual(split_games(self.split), {'SNMOT-001': '7', 'SNMOT-002': '8'})
