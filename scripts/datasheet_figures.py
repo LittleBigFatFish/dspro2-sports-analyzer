@@ -14,7 +14,9 @@ CLASSES = {'player': '#0a50a0', 'referee': '#e69f00', 'ball': '#c0392b'}
 GROUPS = [('football', 'split=val|footage=real', 'Football val\nreal'),
           ('football', 'split=val|footage=video_game', 'Football val\nvideo game'),
           ('soccana_train_fullframes', 'all', 'Soccana train\nfull frames'),
-          ('soccernet_test_1fps', 'all', 'SoccerNet test\n1 fps')]
+          ('soccernet_test_1fps', 'all', 'SN Tracking\ntest'),
+          ('gsr_valid_1fps', 'all', 'SN GSR\nvalid'),
+          ('soccernet_all_games', 'all', 'SoccerNet\nall 9 games')]
 MODELS = ['yolov8n', 'yolo12n', 'yolo26n']
 SIZES = {640: '#c0392b', 1280: '#0a50a0'}
 
@@ -68,7 +70,7 @@ def ball_recall(scoring: Path, target: Path):
     rows = {(r['dataset'], r['group'], r['model'], int(r['imgsz'])): r for r in read_csv(scoring / 'primary.csv')
             if r.get('variant', 'default') == 'default'}
     plt.rcParams.update({'font.size': 8, 'pdf.fonttype': 42})
-    fig, axes = plt.subplots(1, len(GROUPS), figsize=(7.0, 1.9), sharey=True)
+    fig, axes = plt.subplots(1, len(GROUPS), figsize=(7.0, 2.0), sharey=True)
     for ax, (dataset, group, title) in zip(axes, GROUPS):
         for offset, (size, color) in zip((-0.12, 0.12), SIZES.items()):
             picked = [rows[(dataset, group, m, size)] for m in MODELS]
@@ -99,7 +101,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--football-audit', type=Path,
                         default=ROOT / 'outputs/dataset_preparation/20261022T191930876487Z')
-    parser.add_argument('--scoring', type=Path, default=ROOT / 'outputs/scoring/20261103T122219315802Z')
+    parser.add_argument('--scoring', type=Path, default=ROOT / 'outputs/scoring/20261103T142737368356Z')
     parser.add_argument('--output', type=Path, default=ROOT / 'docs/datasheet/figures')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
