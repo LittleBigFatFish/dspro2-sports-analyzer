@@ -1,0 +1,55 @@
+# Paths are relative to the repository root, not to this YAML file.
+# Scores saved comparison runs; no model is run here.
+runs: outputs/comparison
+audit_root: outputs/dataset_preparation
+output: outputs/scoring
+match_iou: 0.5
+report_confidence: 0.25
+# Only unmatched predictions are dropped on an ignore region, whatever their class.
+ignore_iou: 0.5
+ap_iou: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+grid_confidence: [0.1, 0.25, 0.5]
+grid_iou: [0.3, 0.5, 0.75]
+# Shorter ball side in pixels after scaling the longer image side to imgsz: <8, 8-16, >16.
+ball_size_edges: [8, 16]
+# Clip and source groups with fewer images get no row.
+min_group_images: 20
+bootstrap:
+  resamples: 1000
+  seed: 0
+  # Clusters are clips; never games (SoccerNet test has only 3).
+  min_clusters: 20
+reference:
+  path: outputs/dataset_preparation/20261103T113017913421Z/pretrained_val_metrics.csv
+  dataset: football
+  model: models/yolo26n.pt
+  group: split=val
+figure_model: models/yolo26n.pt
+figure_imgsz: 1280
+datasets:
+  football:
+    title: Football
+    # Filename-derived source; this clip is eFootball/PES 2021 footage, not a real match.
+    video_game_sources: [PES_21_clip]
+    groups: [[split], [footage], [split, footage]]
+    small_groups: [[split, source]]
+    notes:
+      all: mixed real + video game
+      split=val: mixed real + video game
+      footage=video_game: video game, not real footage
+      split=val|footage=video_game: video game, not real footage
+    figure_groups: [split=train|footage=real, split=val|footage=real, split=val|footage=video_game]
+  soccernet_test_1fps:
+    title: SoccerNet test 1 fps
+    clip_key: source
+    groups: [[game]]
+    small_groups: [[clip]]
+    bootstrap_by: clip
+    figure_groups: [all]
+  soccana_train_fullframes:
+    title: Soccana train full frames
+    groups: []
+    small_groups: [[source]]
+    notes:
+      all: train split, full frames, seeded sample
+    figure_groups: [all]

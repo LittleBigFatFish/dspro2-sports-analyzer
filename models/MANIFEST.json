@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "file": "yolov8n.pt",
+      "source_url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt",
+      "release_tag": "v8.4.0",
+      "bytes": 6549796,
+      "sha256": "f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36",
+      "sha256_check": "matches the release asset digest",
+      "downloaded_utc": "2026-11-03"
+    },
+    {
+      "file": "yolo12n.pt",
+      "source_url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo12n.pt",
+      "release_tag": "v8.4.0",
+      "bytes": 5595063,
+      "sha256": "419ff3dca37d69bacc93a50fa0c186a1c6f9fe62fae0f108b0872829689e9ca6",
+      "sha256_check": "matches the release asset digest",
+      "downloaded_utc": "2026-11-03"
+    },
+    {
+      "file": "yolo26n.pt",
+      "source_url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt",
+      "release_tag": "v8.4.0",
+      "bytes": 5544453,
+      "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+      "sha256_check": "matches the release asset digest",
+      "downloaded_utc": "2026-10-20"
+    },
+    {
+      "file": "Arial.ttf",
+      "source_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/Arial.ttf",
+      "release_tag": "v0.0.0",
+      "bytes": 773236,
+      "sha256": "525979822591a3447cfc49d943d6f7683508e25543407871c0ed8fed05fd2bd9",
+      "sha256_check": "no published digest; recorded at download",
+      "downloaded_utc": "2026-11-03"
+    }
+  ]
+}
