@@ -40,7 +40,23 @@ datasets:
       split=val|footage=video_game: video game, not real footage
     figure_groups: [split=train|footage=real, split=val|footage=real, split=val|footage=video_game]
   soccernet_test_1fps:
-    title: SoccerNet test 1 fps
+    title: SoccerNet tracking test 1 fps
+    clip_key: source
+    groups: [[game]]
+    small_groups: [[clip]]
+    bootstrap_by: clip
+    figure_groups: [all]
+  soccernet_train_1fps:
+    title: SoccerNet tracking train 1 fps
+    clip_key: source
+    groups: [[game]]
+    small_groups: [[clip]]
+    bootstrap_by: clip
+    notes:
+      all: SoccerNet's own training games; never used to train our models
+    figure_groups: [all]
+  gsr_valid_1fps:
+    title: SoccerNet GSR valid 1 fps
     clip_key: source
     groups: [[game]]
     small_groups: [[clip]]
@@ -53,3 +69,10 @@ datasets:
     notes:
       all: train split, full frames, seeded sample
     figure_groups: [all]
+# Pooled over datasets with disjoint games (GSR test and train repeat the tracking games, so they are not members).
+pools:
+  soccernet_all_games:
+    title: SoccerNet all games
+    members: [soccernet_train_1fps, soccernet_test_1fps, gsr_valid_1fps]
+    bootstrap_by: clip
+    note: "SoccerNet all games (9 games: tracking train 4/6/9 + test 7/8/11 + GSR valid 2/3/5); train games are SoccerNet's training games, not ours"

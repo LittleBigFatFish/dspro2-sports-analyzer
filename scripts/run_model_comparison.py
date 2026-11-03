@@ -40,6 +40,8 @@ def main():
     device = int(device) if str(device).isdigit() else device
     name = args.dataset or config['dataset']
     settings = config['datasets'][name]
+    if not settings.get('audit_run'):
+        parser.error(f'{name}: set audit_run in the config before running')
     dataset = ROOT / settings['root']
     view = build_view(dataset, settings, args.splits, ROOT)
     if args.limit:

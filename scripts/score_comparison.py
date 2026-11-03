@@ -172,17 +172,28 @@ def group_metrics(scored, names, settings, full=True) -> list[dict]:
     return rows
 
 
+def weighted_ap(matched, owner, weights, totals):
+    """Weights are how often each cluster was drawn."""
+    w = weights[owner]
+    keep = w > 0
+    total = int(weights @ totals)
+    if not total:
+        return None
+    tp = np.cumsum((matched * w)[keep])
+    return interpolated_ap(tp/total, tp/np.cumsum(w[keep]))
+
+
 def cluster_bootstrap_ap(scored, clusters: dict, label, threshold, resamples, seed):
     """Percentile 95% interval of pooled AP, resampling whole clusters."""
     parts = [pooled(scored, names, label, threshold)[:3] for names in clusters.values()]
-    picks = np.random.default_rng(seed).integers(0, len(parts), size=(resamples, len(parts)))
-    values = []
-    for pick in picks:
-        scores = np.concatenate([parts[i][0] for i in pick])
-        matched = np.concatenate([parts[i][1] for i in pick])
-        value = ap(scores, matched, sum(len(parts[i][2]) for i in pick))
-        if value is not None:
-            values.append(value)
+    order = np.argsort(-np.concatenate([p[0] for p in parts]), kind='stable')
+    matched = np.concatenate([p[1] for p in parts])[order]
+    owner = np.concatenate([np.full(len(p[0]), i) for i, p in enumerate(parts)])[order]
+    totals = np.array([len(p[2]) for p in parts])
+    rng = np.random.default_rng(seed)
+    values = [weighted_ap(matched, owner, np.bincount(rng.integers(0, len(parts), len(parts)), minlength=len(parts)),
+                          totals) for _ in range(resamples)]
+    values = [v for v in values if v is not None]
     return tuple(float(v) for v in np.percentile(values, [2.5, 97.5])) if values else (None, None)
 
 
@@ -264,19 +275,29 @@ def cross_check(rows, settings, base: Path):
     return output
 
 
+def title_of(settings, dataset):
+    entry = settings['datasets'].get(dataset) or settings.get('pools', {}).get(dataset, {})
+    return entry.get('title', dataset)
+
+
 def figures(target: Path, rows, curves, settings):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    colours = ['#2a78d6', '#eb6834', '#1baf7a', '#6250d6', '#e34948']
+    colours = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
     c, t = settings['report_confidence'], settings['match_iou']
-    panels = [(d, g) for d, entry in settings['datasets'].items() for g in entry.get('figure_groups', [])
-              if any(r['dataset'] == d and r['group'] == g for r in rows)]
+    wanted = [(d, g) for d, entry in settings['datasets'].items() for g in entry.get('figure_groups', [])]
+    wanted += [(d, 'all') for d in settings.get('pools', {})]
+    panels = [(d, g) for d, g in wanted if any(r['dataset'] == d and r['group'] == g for r in rows)]
     models = list(dict.fromkeys((r['model'], r['variant']) for r in rows))
     sizes = sorted({r['imgsz'] for r in rows})
-    fig, axes = plt.subplots(1, len(panels), figsize=(3.8*len(panels), 3.8), sharey=True, layout='constrained',
+    columns = min(4, len(panels))
+    lines = -(-len(panels) // columns)
+    fig, axes = plt.subplots(lines, columns, figsize=(4*columns, 3.8*lines), sharey=True, layout='constrained',
                              squeeze=False)
-    for ax, (dataset, group) in zip(axes[0], panels):
+    for ax in axes.flat[len(panels):]:
+        ax.set_visible(False)
+    for ax, (dataset, group) in zip(axes.flat, panels):
         n = None
         for k, size in enumerate(sizes):
             for x, (model, name) in enumerate(models):
@@ -291,27 +312,80 @@ def figures(target: Path, rows, curves, settings):
                             label=None if f'imgsz {size}' in ax.get_legend_handles_labels()[1] else f'imgsz {size}')
         ax.set_xticks(range(len(models)), [Path(m).stem + ('' if v == 'default' else f'\n{v}') for m, v in models],
                       fontsize=8)
-        title = settings['datasets'][dataset].get('title', dataset)
-        ax.set_title(f'{title}\n{group} (n={n} balls)', fontsize=9)
+        ax.set_title(f'{title_of(settings, dataset)}\n{group} (n={n} balls)', fontsize=9)
         ax.set_ylim(0, 1)
         ax.grid(axis='y', alpha=0.2)
-    axes[0][0].set_ylabel(f'Ball recall (conf {c}, IoU {t}), Wilson 95%')
+    for ax in axes[:, 0]:
+        ax.set_ylabel(f'Ball recall (conf {c}, IoU {t}), Wilson 95%', fontsize=8)
     axes[0][0].legend(fontsize=8, loc='upper left')
     fig.savefig(target / 'ball_recall.png', dpi=150)
     plt.close(fig)
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4), layout='constrained')
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), layout='constrained')
     for ax, label in zip(axes, LABELS):
         for k, ((dataset, group), curve) in enumerate(curves.items()):
             recalls, precisions, total = curve[label]
-            title = settings['datasets'][dataset].get('title', dataset)
             ax.plot(recalls, precisions, color=colours[k % len(colours)], lw=2, ls=['-', '--', '-.', ':'][k % 4],
-                    label=f'{title}, {group} (n={total})')
+                    label=f'{title_of(settings, dataset)}, {group} (n={total})')
         ax.set(title=f'{label}: precision-recall at IoU {t}, {Path(settings["figure_model"]).stem} imgsz '
                      f'{settings["figure_imgsz"]}', xlabel='Recall', ylabel='Precision', xlim=(0, 1), ylim=(0, 1.02))
         ax.grid(alpha=0.2)
         ax.legend(fontsize=7)
     fig.savefig(target / 'pr_curves.png', dpi=150)
     plt.close(fig)
+
+
+def score_run(folder: Path, manifest, settings, thresholds, truths: dict):
+    dataset = settings['datasets'].get(manifest['dataset']['name'], {})
+    root = ROOT / manifest['dataset']['root']
+    audit = ROOT / settings['audit_root'] / manifest['dataset']['audit_run']
+    records, predictions = load_run(folder, manifest)
+    records = describe(records, dataset)
+    key = (root, audit, manifest['dataset']['view_sha256'])
+    if key not in truths:
+        truths[key] = load_ground_truth(root, audit, records)
+    truth, sizes = truths[key]
+    ignore = load_ignore(root)
+    scored = score_images(truth, predictions, sizes, ignore, manifest['imgsz'], thresholds,
+                          settings['ignore_iou'], settings['ball_size_edges'])
+    return records, scored, sum(len(v) for k, v in ignore.items() if k in truth)
+
+
+def clusters_of(records, key) -> dict:
+    clusters = defaultdict(list)
+    for record in records if key else []:
+        clusters[record[key]].append(record['image'])
+    return clusters
+
+
+def score_groups(scored, groups, clusters, settings, base) -> list[dict]:
+    boot, rows = settings['bootstrap'], []
+    for group, names, level in groups:
+        metrics = group_metrics(scored, names, settings, full=level != 'small')
+        if level == 'all' and len(clusters) >= boot['min_clusters']:
+            for row in metrics:
+                if row['metric'].endswith('_AP50'):
+                    row['low'], row['high'] = cluster_bootstrap_ap(
+                        scored, clusters, row['metric'].split('_')[0], settings['match_iou'],
+                        boot['resamples'], boot['seed'])
+        metrics.append({'metric': 'images', 'value': len(names), 'low': None, 'high': None, 'n': len(names)})
+        rows.extend({**base, 'group': group, **row} for row in metrics)
+    return rows
+
+
+def score_pool(name, pool, runs, settings, thresholds, truths):
+    """Pooled 'all' group over member datasets; clusters stay per clip."""
+    scored, records, clusters = {}, [], defaultdict(list)
+    for folder, manifest in runs:
+        member = manifest['dataset']['name']
+        member_records, member_scored, _ = score_run(folder, manifest, settings, thresholds, truths)
+        scored.update(((f'{member}/{image}', *rest), value) for (image, *rest), value in member_scored.items())
+        records.extend({**r, 'image': f'{member}/{r["image"]}'} for r in member_records)
+        for record in member_records:
+            clusters[f'{member}/{record[pool["bootstrap_by"]]}'].append(f'{member}/{record["image"]}')
+    manifest = runs[0][1]
+    base = {'run_id': '+'.join(folder.name for folder, _ in runs), 'dataset': name, 'model': manifest['model'],
+            'variant': variant(manifest), 'imgsz': manifest['imgsz']}
+    return score_groups(scored, [('all', [r['image'] for r in records], 'all')], clusters, settings, base)
 
 
 def main():
@@ -327,38 +401,15 @@ def main():
     for folder, manifest in runs:
         name = manifest['dataset']['name']
         dataset = settings['datasets'].get(name, {})
-        root = ROOT / manifest['dataset']['root']
-        audit = ROOT / settings['audit_root'] / manifest['dataset']['audit_run']
-        records, predictions = load_run(folder, manifest)
-        records = describe(records, dataset)
-        key = (root, audit, manifest['dataset']['view_sha256'])
-        if key not in truths:
-            truths[key] = load_ground_truth(root, audit, records)
-        truth, sizes = truths[key]
-        ignore = load_ignore(root)
-        scored = score_images(truth, predictions, sizes, ignore, manifest['imgsz'], thresholds,
-                              settings['ignore_iou'], settings['ball_size_edges'])
+        records, scored, ignored = score_run(folder, manifest, settings, thresholds, truths)
         groups = build_groups(records, dataset, settings['min_group_images'])
-        clusters = defaultdict(list)
-        for record in records:
-            if dataset.get('bootstrap_by'):
-                clusters[record[dataset['bootstrap_by']]].append(record['image'])
-        boot = settings['bootstrap']
-        for group, names, level in groups:
+        for group, _, level in groups:
             notes[name, group] = dataset.get('notes', {}).get(group, '')
             if level == 'small':
                 small.add((folder.name, group))
-            base = {'run_id': folder.name, 'dataset': name, 'model': manifest['model'], 'variant': variant(manifest),
-                    'imgsz': manifest['imgsz'], 'group': group}
-            metrics = group_metrics(scored, names, settings, full=level != 'small')
-            if level == 'all' and len(clusters) >= boot['min_clusters']:
-                for row in metrics:
-                    if row['metric'].endswith('_AP50'):
-                        row['low'], row['high'] = cluster_bootstrap_ap(
-                            scored, clusters, row['metric'].split('_')[0], settings['match_iou'],
-                            boot['resamples'], boot['seed'])
-            metrics.append({'metric': 'images', 'value': len(names), 'low': None, 'high': None, 'n': len(names)})
-            rows.extend({**base, **row} for row in metrics)
+        base = {'run_id': folder.name, 'dataset': name, 'model': manifest['model'], 'variant': variant(manifest),
+                'imgsz': manifest['imgsz']}
+        rows.extend(score_groups(scored, groups, clusters_of(records, dataset.get('bootstrap_by')), settings, base))
         if (manifest['model'], variant(manifest), manifest['imgsz']) == \
                 (settings['figure_model'], 'default', settings['figure_imgsz']):
             for group, names, _ in groups:
@@ -372,10 +423,23 @@ def main():
                      'images': manifest['dataset']['images'], 'view_sha256': manifest['dataset']['view_sha256'],
                      'audit_run': manifest['dataset']['audit_run'], 'predictions_sha256': manifest['predictions_sha256'],
                      'confidence': manifest['confidence'], 'device': manifest['device'],
-                     'inference_git_commit': manifest.get('git_commit'),
-                     'ignore_regions': sum(len(v) for k, v in ignore.items() if k in truth)})
+                     'inference_git_commit': manifest.get('git_commit'), 'ignore_regions': ignored})
         print(f'{folder.name} {name} {Path(manifest["model"]).stem} {variant(manifest)} {manifest["imgsz"]}: '
               f'{len(groups)} groups', flush=True)
+    pools = []
+    for name, pool in settings.get('pools', {}).items():
+        combos = defaultdict(dict)
+        for folder, manifest in runs:
+            if manifest['dataset']['name'] in pool['members']:
+                combos[manifest['model'], variant(manifest), manifest['imgsz']][manifest['dataset']['name']] = folder, manifest
+        for combo, members in combos.items():
+            if set(members) != set(pool['members']):
+                continue
+            rows.extend(score_pool(name, pool, [members[m] for m in pool['members']], settings, thresholds, truths))
+            notes[name, 'all'] = pool.get('note', '')
+            pools.append({'dataset': name, 'model': combo[0], 'variant': combo[1], 'imgsz': combo[2],
+                          'runs': [members[m][0].name for m in pool['members']]})
+            print(f'{name} {Path(combo[0]).stem} {combo[1]} {combo[2]}: pooled', flush=True)
     target = new_run_dir(ROOT / settings['output'])
     write_csv(target / 'metrics.csv', rows, FIELDS)
     write_csv(target / 'primary.csv', primary_table(rows, notes, settings, small), PRIMARY_FIELDS)
@@ -384,10 +448,11 @@ def main():
         write_csv(target / 'crosscheck.csv', check, ['imgsz', 'label', 'metric', 'reference', 'scored', 'difference'])
     figures(target, rows, curves, settings)
     import matplotlib
-    manifest = {'runs': used, 'skipped_runs': skipped, 'config': settings, 'args': vars(args) | {'config': str(args.config)},
+    manifest = {'runs': used, 'pooled': pools, 'skipped_runs': skipped, 'config': settings,
+                'args': vars(args) | {'config': str(args.config)},
                 'notes': {f'{d} {g}': n for (d, g), n in notes.items() if n},
                 'interval_methods': {'recall_precision': 'Wilson 95%, n = ground-truth boxes (recall) or kept predictions (precision)',
-                                     'AP50': 'cluster bootstrap by clip, percentile 95%, dataset total only, where at least '
+                                     'AP50': 'cluster bootstrap by clip, percentile 95%, dataset or pool total only, where at least '
                                              f'{settings["bootstrap"]["min_clusters"]} clips'},
                 'git': git_state(), 'python': platform.python_version(), 'numpy': np.__version__,
                 'matplotlib': matplotlib.__version__,

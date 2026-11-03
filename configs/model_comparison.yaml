@@ -21,6 +21,15 @@ datasets:
     root: data/processed/soccernet/test_per5s
     splits: [test]
     audit_run: outputs/dataset_preparation/20261103T113351992092Z
+  soccernet_train_1fps:
+    root: data/processed/soccernet/train_1fps
+    splits: [train]
+    audit_run: outputs/dataset_preparation/20261103T131205720681Z
+  # Game State valid; its test and train splits are byte-identical to SoccerNet Tracking, so they are left out.
+  gsr_valid_1fps:
+    root: data/processed/gsr/valid_1fps
+    splits: [valid]
+    audit_run: outputs/dataset_preparation/20261103T132920299005Z
   soccana_train_fullframes:
     root: data/raw/soccana_v1
     splits: [train]

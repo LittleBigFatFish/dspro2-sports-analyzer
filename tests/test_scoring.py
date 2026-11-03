@@ -3,6 +3,8 @@ import importlib.util
 import random
 import unittest
 
+import numpy as np
+
 from sports_analyzer.annotations.yolo import Box
 from sports_analyzer.evaluation import evaluate_image, average_precision, wilson
 
@@ -83,6 +85,20 @@ class ScoringTests(unittest.TestCase):
         self.assertEqual(interval, scoring.cluster_bootstrap_ap(scored, clusters, 'ball', .5, 200, 0))
         self.assertLessEqual(interval[0], interval[1])
         self.assertEqual(interval[1], 1)
+
+    def test_weighted_resample_equals_concatenation(self):
+        rng = np.random.default_rng(1)
+        parts = [(rng.random(n), rng.random(n) < .5, rng.integers(1, 6)) for n in (5, 0, 8, 3)]
+        scores = np.concatenate([p[0] for p in parts])
+        order = np.argsort(-scores, kind='stable')
+        matched = np.concatenate([p[1] for p in parts])[order]
+        owner = np.concatenate([np.full(len(p[0]), i) for i, p in enumerate(parts)])[order]
+        totals = np.array([p[2] for p in parts])
+        for pick in ([0, 0, 2, 3], [1, 1, 1, 1], [3, 2, 2, 0]):
+            weights = np.bincount(pick, minlength=len(parts))
+            expected = scoring.ap(np.concatenate([parts[i][0] for i in pick]),
+                                  np.concatenate([parts[i][1] for i in pick]), sum(parts[i][2] for i in pick))
+            self.assertAlmostEqual(scoring.weighted_ap(matched, owner, weights, totals), expected)
 
 
 if __name__ == '__main__':
