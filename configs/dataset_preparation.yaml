@@ -1,4 +1,4 @@
-dataset_root: data/raw/football-image-dataset
+dataset_root: data/raw/Football-Image-Dataset
 # Relative to dataset_root; change to data.yml if that is the actual filename.
 dataset_yaml: data.yaml
 output: outputs/dataset_preparation
@@ -8,3 +8,10 @@ samples_per_split: 3
 tiny_side_pixels: 5
 # dHash candidates require visual review; this is not proof of leakage.
 near_duplicate_distance: 4
+# Pretrained baseline on val: COCO person/sports ball vs. player+referee/ball.
+model: models/yolo26n.pt
+baseline_image_sizes: [640, 1280]
+# Low threshold keeps the full ranking for AP; precision/recall use report_confidence.
+ap_confidence: 0.001
+report_confidence: 0.25
+match_iou: 0.50

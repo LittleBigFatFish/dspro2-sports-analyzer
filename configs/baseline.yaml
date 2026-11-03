@@ -7,4 +7,4 @@ model: models/yolo26n.pt
 output: outputs/baseline
 image_sizes: [640, 1280]
 confidence: 0.25
-match_iou: 0.50
+match_iou: 0.50 # Intersection over Union threshold for matching predictions to ground truth
