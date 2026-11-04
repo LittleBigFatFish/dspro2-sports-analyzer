@@ -62,6 +62,25 @@ datasets:
     small_groups: [[clip]]
     bootstrap_by: clip
     figure_groups: [all]
+  sportsaction_val_1fps:
+    title: MultiSports football val 1 fps
+    clip_key: source
+    groups: [[game]]
+    small_groups: [[clip]]
+    bootstrap_by: clip
+    notes:
+      all: only acting players are labelled and there is no ball; use person recall, not AP or precision
+    # No ball labels, so no ball recall panel.
+    figure_groups: []
+  sportsaction_train_1fps:
+    title: MultiSports football train 1 fps
+    clip_key: source
+    groups: [[game]]
+    small_groups: [[clip]]
+    bootstrap_by: clip
+    notes:
+      all: only acting players are labelled and there is no ball; use person recall, not AP or precision
+    figure_groups: []
   soccana_train_fullframes:
     title: Soccana train full frames
     groups: []
