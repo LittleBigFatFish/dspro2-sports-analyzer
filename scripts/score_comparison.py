@@ -280,15 +280,9 @@ def title_of(settings, dataset):
     return entry.get('title', dataset)
 
 
-def figures(target: Path, rows, curves, settings):
-    import matplotlib
-    matplotlib.use('Agg')
+def ball_figure(target, rows, panels, settings, colours):
     import matplotlib.pyplot as plt
-    colours = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
     c, t = settings['report_confidence'], settings['match_iou']
-    wanted = [(d, g) for d, entry in settings['datasets'].items() for g in entry.get('figure_groups', [])]
-    wanted += [(d, 'all') for d in settings.get('pools', {})]
-    panels = [(d, g) for d, g in wanted if any(r['dataset'] == d and r['group'] == g for r in rows)]
     models = list(dict.fromkeys((r['model'], r['variant']) for r in rows))
     sizes = sorted({r['imgsz'] for r in rows})
     columns = min(4, len(panels))
@@ -320,6 +314,20 @@ def figures(target: Path, rows, curves, settings):
     axes[0][0].legend(fontsize=8, loc='upper left')
     fig.savefig(target / 'ball_recall.png', dpi=150)
     plt.close(fig)
+
+
+def figures(target: Path, rows, curves, settings):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    colours = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
+    c, t = settings['report_confidence'], settings['match_iou']
+    wanted = [(d, g) for d, entry in settings['datasets'].items() for g in entry.get('figure_groups', [])]
+    wanted += [(d, 'all') for d in settings.get('pools', {})]
+    panels = [(d, g) for d, g in wanted if any(r['dataset'] == d and r['group'] == g for r in rows)]
+    # A run set without ball labels has no panel to draw.
+    if panels:
+        ball_figure(target, rows, panels, settings, colours)
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.6), layout='constrained')
     for ax, label in zip(axes, LABELS):
         for k, ((dataset, group), curve) in enumerate(curves.items()):
