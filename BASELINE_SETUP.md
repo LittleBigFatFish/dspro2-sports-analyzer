@@ -1,29 +1,6 @@
-# Baseline learning package
+# Pretrained football baseline
 
-This is a proposed implementation for review and adaptation, not a completed coursework submission.
-
-## Integrate
-
-Copy the contents into your existing repository root, preserving directory structure. Review collisions before replacing any file. The package does not replace README.md, .gitignore, requirements-cpu.txt, sports_analyzer/__init__.py or your data_audit.py. New annotations/__init__.py is included. Your existing project package initializer should remain in place.
-
-Install notebook tools from the project terminal:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-notebook.txt
-.\.venv\Scripts\python.exe -m pip check
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p test_baseline.py -v
-```
-
-Open notebooks/01_exploration_and_baseline.ipynb in PyCharm and select the project .venv interpreter as kernel. Restart the kernel and run all cells. If notebook execution is unavailable in your IDE, install JupyterLab in this same environment and launch it with `python -m jupyterlab` using the .venv interpreter.
-
-## Required local files
-
-- data/samples/: the seven original JPG images (not prediction overlays).
-- data/sample-labels/: source labels with exactly matching image stems.
-- data/source-metadata/data.yaml: original dataset configuration. Change the config if named data.yml.
-- models/yolo26n.pt: weights already downloaded during the CLI test.
-
-Change only configs/baseline.yaml for paths and experiment settings. All paths resolve against the repository root. Only JPG/JPEG/PNG inputs are included; this initial notebook is image-only and CPU-only. It never downloads weights automatically.
+For installation, data, weights and notebook startup, use the [README quickstart](README.md#from-a-fresh-clone-to-the-first-notebook). The following describes Notebook 01 on the seven development images. Notebook 02 explores the complete dataset and also evaluates the validation split.
 
 ## Workflow and outputs
 
@@ -38,13 +15,6 @@ Change only configs/baseline.yaml for paths and experiment settings. All paths r
 Outputs go to outputs/baseline/<UTC timestamp>/. Each manifest is marked incomplete until the last code cell succeeds. For reproducibility restart/run all rather than rerunning only selected export cells. Never interpret an incomplete run as a successful evaluation.
 
 Missing labels fail; empty labels are allowed and reported. Out-of-bounds boxes fail except for a 1e-6 rounding tolerance (warned, unchanged). Sides below 5 pixels produce warnings, not deletions. Source files are never modified. Ground truth with unreviewed empty annotations or missing out-of-pitch persons can make precision misleading. This is explicitly a development-reference evaluation, not full-scene detection accuracy.
-
-## Validation performed here
-
-- Four unit tests passed: coordinate conversion and invalid data, duplicate prediction accounting, missed/wrong-class predictions, role mapping.
-- Notebook schema and every code cell compiled successfully.
-- Every code cell was run in sequence on a synthetic image/labels with a mocked detector. Metrics, exports and complete manifest verified; a generated ground-truth figure visually inspected.
-- Real YOLO inference and the real seven-image notebook were NOT executed here: complete source data, labels and local weights were unavailable. Notebook is delivered without fabricated outputs. Real evaluation must be run in the user's verified CPU environment.
 
 ## Limits and next steps
 

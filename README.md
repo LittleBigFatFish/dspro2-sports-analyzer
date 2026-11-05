@@ -1,210 +1,52 @@
 # Sports Analyzer
 
-A computer vision project developed for the **Data Science Project 2
-(DSPRO2)** module at **Lucerne University of Applied Sciences and Arts
-(HSLU)**.
+Football object detection for HSLU Data Science Project 2, autumn 2026. Johan Roth and Timo Tran.
 
-**Team:** Johan Roth and Timo Tran  
-**Semester:** Autumn 2026
+## From a fresh clone to the first notebook
 
-## Project idea
+**Prerequisites:** Git, 64-bit Python 3.12 with venv/pip (Windows: the `py` launcher), internet access and several GB of free disk space. The reference setup uses the CPU; no NVIDIA driver, W&B account, uv or activated environment is required. On Windows choose a short local checkout path, e.g. C:\src, to avoid long-path errors.
 
-The project explores how computer vision can support the analysis of
-football images and videos.
+**1. Get the project.** In PowerShell:
 
-Our first objective is to apply a pretrained YOLO model to football
-images and visualize its predictions using bounding boxes, class labels
-and confidence scores.
+```powershell
+git clone https://github.com/LittleBigFatFish/dspro2-sports-analyzer.git
+cd dspro2-sports-analyzer
+```
 
-We plan to compare YOLOv8, YOLO12 and YOLO26 and investigate their
-strengths and limitations on football data. Further development will
-depend on the quality of the results and the available project time.
+**2. Prepare everything once and open the notebook.** Run the next two commands separately from the project root. Wait for **Ready** before running the second:
 
-The system is intended to support human interpretation. Model
-predictions may contain errors and should not be treated as objective
-ground truth.
+```powershell
+py -3.12 scripts/setup.py
+py -3.12 scripts/setup.py lab
+```
 
-## Current status
+On Linux x86-64, use `python3.12` in place of `py -3.12`. The script uses the project interpreter directly. A CPU environment is created in `.venv`; keep a separate CUDA environment for GPU experiments.
 
-The Windows CPU development environment has been set up and checked.
+**3. Explore.** JupyterLab opens [02_dataset_preparation.ipynb](notebooks/02_dataset_preparation.ipynb). Select the Python 3 kernel offered by this server and **Kernel → Restart Kernel and Run All Cells**. The first audit should report **612 images: 512 train, 100 validation; 10,136 boxes**. Continue through the class distributions, box sizes and original frames with annotations. Section 6 runs YOLO26n on the validation split at two resolutions and can take longer on a laptop. Generated reports go into `outputs/dataset_preparation/<run>/`. Stop the server with Ctrl+C in its terminal. Later, only the `lab` command is needed.
 
-Completed checks:
+**PyCharm alternative:** run setup once, open the project, select `.venv\Scripts\python.exe` as interpreter and notebook kernel, then run Notebook 02. For a faster first inference open [Notebook 01](notebooks/01_exploration_and_baseline.ipynb), which uses seven fixed sample images instead.
 
-- Python virtual environment created.
-- PyTorch, Torchvision and Ultralytics imported successfully.
-- Package dependencies checked with `pip check`.
-- A basic PyTorch calculation executed successfully on the CPU.
+## What setup prepares
 
-Football image inference, the web application and model evaluation
-have not yet been implemented.
-
-## Planned next steps
-
-- Select a small sample of football images.
-- Run YOLO26 inference and display bounding boxes.
-- Build a simple image-upload web interface.
-- Explore dataset annotations and class mappings.
-- Compare YOLOv8, YOLO12 and YOLO26.
-- Extend processing to short football videos.
-
-Depending on the results, we may explore fine-tuning, object tracking,
-team assignment and basic football metrics such as estimated ball
-possession.
-
-## Development environment
-
-The initial setup was verified with:
-
-| Component | Version |
+| Local path | Contents |
 | --- | --- |
-| Operating system | Windows |
-| Python | 3.12.10 |
-| PyTorch | 2.14.1+cpu |
-| Torchvision | 0.29.1+cpu |
-| Ultralytics | 8.4.177 |
+| `.venv/` | CPU PyTorch and Torchvision from the PyTorch CPU index, pinned project dependencies, JupyterLab and kernel |
+| `data/raw/Football-Image-Dataset/` | Full [Football Image Dataset](https://github.com/skaczylo/Football-Image-Dataset) by skaczylo (CC BY 4.0), including source README and license on download. Revision `264212872f1bfa6a9a3413f298793474da741aec`, as recorded in the datasheet |
+| `data/samples/`, `data/sample-labels/`, `data/source-metadata/data.yaml` | Seven original image/label pairs and metadata for Notebook 01, derived from that same dataset |
+| `models/yolo26n.pt` | Pretrained detection weights, verified against the size and SHA-256 in [models/MANIFEST.json](models/MANIFEST.json) before loading |
 
-The CPU environment supports development and initial experiments on
-a laptop. A GPU environment for training and larger experiments will
-be configured separately.
+Setup verifies the reference image and label contents on repeat runs. Existing inputs with different contents are reported rather than replaced. Data, weights and results stay local. The notebooks run inference; this setup does not train a model.
 
-Package versions for the initial CPU environment are recorded in
-`requirements-cpu.txt`.
+## Beyond the first notebook
 
-## Setup on Windows
+- [Baseline method and interpretation](BASELINE_SETUP.md): class mapping, matching, metrics and run manifests.
+- [Datasheet (PDF)](docs/datasheet/main.pdf) · [LaTeX source](docs/datasheet/main.tex): six datasets, provenance, splits and known limitations.
+- [Model comparison](configs/model_comparison.yaml) and [scoring](configs/scoring.yaml): separate experiments for YOLOv8n, YOLO12n and YOLO26n. Other datasets, model weights and historical audit/report paths in those configs are **not** prerequisites for either onboarding notebook. Reproducing those experiments requires their inputs and matching audit reports.
+- The web app, video tracking and tactical metrics are separate project goals. Tasks are managed in GitHub Issues and Projects.
 
-### Prerequisites
+## If setup stops
 
-- Git
-- Python 3.12, with the Windows Python launcher available as `py`
-- Access to this repository
-- Internet access for installing dependencies
-
-Clone the repository using its GitHub clone URL, then open a PowerShell
-terminal in the repository root.
-
-Execute the following commands individually. If a command fails,
-resolve the error before continuing.
-
-### 1. Create a virtual environment
-
-```powershell
-py -3.12 -m venv .venv
-```
-
-### 2. Install the CPU build of PyTorch
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install torch==2.14.1+cpu torchvision==0.29.1+cpu --index-url https://download.pytorch.org/whl/cpu
-```
-
-### 3. Install the remaining dependencies
-
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-cpu.txt
-```
-
-PyTorch is installed separately because `requirements-cpu.txt` records
-package versions but does not record the CPU package index.
-
-The commands explicitly use the project interpreter, so activating
-the virtual environment is optional.
-
-### 4. Verify the installation
-
-Check dependency compatibility:
-
-```powershell
-.\.venv\Scripts\python.exe -m pip check
-```
-
-Expected output:
-
-```text
-No broken requirements found.
-```
-
-Check imports, package versions and a CPU calculation:
-
-```powershell
-.\.venv\Scripts\python.exe -c "import torch; import torchvision; import ultralytics; from ultralytics import YOLO; print('PyTorch:', torch.__version__); print('Torchvision:', torchvision.__version__); print('Ultralytics:', ultralytics.__version__); print('CUDA build:', torch.version.cuda); print('CPU test:', (torch.tensor([2.0], device='cpu') * 3).item())"
-```
-
-For this CPU setup, the final two lines should be:
-
-```text
-CUDA build: None
-CPU test: 6.0
-```
-
-This verifies the environment. It does not download model weights or
-perform object detection.
-
-### 5. Configure PyCharm
-
-Select the existing interpreter at:
-
-```text
-<repository-root>\.venv\Scripts\python.exe
-```
-
-Use this interpreter for the project and its run configurations.
-
-## Repository files
-
-| Path | Purpose |
-| --- | --- |
-| `README.md` | Project overview and setup instructions |
-| `requirements-cpu.txt` | Recorded dependencies for the Windows CPU environment |
-| `.gitignore` | Excludes local environments and other local files |
-
-The local `.venv/` and `.idea/` directories are not committed.
-
-Additional source code, dataset documentation and evaluation files
-will be added as the project develops.
-
-## Data and evaluation
-
-A project dataset has not yet been selected.
-
-Before using a dataset, we will review its source, usage conditions,
-available classes and annotation format. Dataset characteristics and
-limitations will be documented in the Data Sheet.
-
-For model comparisons, we will use consistent input data and document
-the hardware, model weights and inference settings.
-
-Quantitative detection evaluation requires suitable ground-truth
-annotations. Visual inspection alone does not establish detection
-accuracy.
-
-For video datasets, we will aim to separate training, validation and
-test data by match to avoid leakage between closely related frames.
-
-## Experiment tracking
-
-Weights & Biases is planned for recording model configurations,
-dataset versions, metrics and experiment results.
-
-Experiment tracking has not yet been configured.
-
-## Collaboration
-
-Tasks are managed through GitHub Issues and GitHub Projects:
-
-**Backlog → Ready → In Progress → In Review → Done**
-
-Changes are developed on separate branches and reviewed through pull
-requests. Each team member creates their own local virtual environment.
-
-Before closing the setup issue, the other team member should verify
-the installation from a fresh clone.
-
-## Results and limitations
-
-Has to be explored yet.
-
-## References
-
-- [Ultralytics documentation](https://docs.ultralytics.com/)
-- [PyTorch documentation](https://pytorch.org/docs/stable/index.html)
-- [Weights & Biases documentation](https://docs.wandb.ai/)
+- **Python not found:** check `py -3.12 --version`. A different default Python is fine. Do not reuse a .venv copied from another machine.
+- **Download interrupted:** rerun setup. Allow access to GitHub and its asset hosts, PyPI and the PyTorch CPU package index. The failing command or path is printed; no TLS bypass is needed.
+- **Existing data or model differs:** keep a backup and move the reported file/directory aside before rerunning. The bootstrap expects the original dataset and weights, not corrected labels or your own fine-tuned checkpoint.
+- **Browser did not open:** use the local URL printed by JupyterLab. For an import error in PyCharm, check that the notebook uses this repository's .venv.
