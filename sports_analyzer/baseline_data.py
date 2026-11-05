@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import math
+import random
 from PIL import Image
 from .annotations.yolo import read_labels
 
@@ -10,7 +11,7 @@ def sha256(path: Path):
         return hashlib.file_digest(handle, 'sha256').hexdigest()
 
 
-def load_sample(image_dir: Path, label_dir: Path, names):
+def load_sample(image_dir: Path, label_dir: Path, names, *, sample_size=None, seed=42):
     if not image_dir.is_dir() or not label_dir.is_dir():
         raise FileNotFoundError('Image or label directory missing; check baseline.yaml')
     images = sorted(p for p in image_dir.iterdir() if p.suffix.lower() in {'.jpg', '.jpeg', '.png'})
@@ -18,6 +19,10 @@ def load_sample(image_dir: Path, label_dir: Path, names):
         raise ValueError('No JPG/PNG images found')
     if len({p.stem for p in images}) != len(images):
         raise ValueError('Duplicate image stems would make label matching ambiguous')
+    if sample_size is not None:
+        if type(sample_size) is not int or not 1 <= sample_size <= len(images):
+            raise ValueError(f"sample_size must be between 1 and {len(images)}")
+        images = sorted(random.Random(seed).sample(images, sample_size))
     records = []
     for path in images:
         with Image.open(path) as image:
