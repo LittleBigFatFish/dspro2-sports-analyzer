@@ -18,7 +18,6 @@ SOURCE = "https://github.com/skaczylo/Football-Image-Dataset.git"
 REVISION = "264212872f1bfa6a9a3413f298793474da741aec"
 DATA = ROOT / "data/raw/Football-Image-Dataset"
 DATA_DIGEST = "fef162344d918cb32a4ecf410c69e7876396712a681ca38b6cd2f4a9e6004a30"
-SAMPLES = "00024d 004987 00b126 00f142 01f456 10d39e 11fd68".split()
 
 
 def run(*args):
@@ -62,35 +61,6 @@ def dataset():
         run(*git, "checkout", "--detach", "FETCH_HEAD")
         verify_data(checkout)
         checkout.rename(DATA)
-
-
-def copy_reference(src, dst):
-    if dst.exists():
-        a, b = src.read_bytes(), dst.read_bytes()
-        if src.suffix in {".txt", ".yaml"}:
-            a, b = (v.replace(b"\r\n", b"\n") for v in (a, b))
-        if a != b:
-            raise ValueError(f"Existing file differs: {dst}. Back it up before retrying.")
-        return
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(src, dst)
-
-
-def samples():
-    names = ["20250710_144746_" + s for s in SAMPLES]
-    dest = ROOT / "data/samples"
-    extra = [p.name for p in dest.glob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"}
-             and p.name not in {n + ".jpg" for n in names}]
-    if extra:
-        raise ValueError(f"{dest}: move extra sample images aside: {extra}")
-    for stem in names:
-        src = next((p for p in (DATA / "images").glob(f"*/{stem}.jpg")), None)
-        if src is None:
-            raise FileNotFoundError(stem)
-        copy_reference(src, dest / src.name)
-        copy_reference(DATA / "labels" / src.parent.name / (stem + ".txt"),
-                       ROOT / "data/sample-labels" / (stem + ".txt"))
-    copy_reference(DATA / "data.yaml", ROOT / "data/source-metadata/data.yaml")
 
 
 def weights():
@@ -143,9 +113,8 @@ def main():
         run(PYTHON, "-m", "jupyterlab", NOTEBOOK)
         return
     environment()
-    print("Checking the complete football dataset and the seven baseline pairs ...", flush=True)
+    print("Checking the complete football dataset and its original splits ...", flush=True)
     dataset()
-    samples()
     print("Checking YOLO26n against models/MANIFEST.json ...", flush=True)
     weights()
     run(PYTHON, "-c", "import torch, torchvision, jupyterlab, ipykernel; from ultralytics import YOLO; "
