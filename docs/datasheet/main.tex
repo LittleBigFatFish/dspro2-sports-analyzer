@@ -1,0 +1,568 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=0.85in}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{microtype}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+% --- Custom Colors ---
+\definecolor{primaryBlue}{RGB}{10, 80, 160}
+\definecolor{lightGray}{RGB}{245, 245, 245}
+
+% --- Section Styling ---
+\titleformat{\section}{\large\bfseries\color{primaryBlue}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{primaryBlue}}{}{0em}{}
+\titlespacing*{\subsection}{0pt}{1.2ex plus 0.4ex}{0.3ex}
+\setlist[itemize]{leftmargin=*, noitemsep, topsep=2pt}
+
+% --- Custom Box for Student Info ---
+\newtcolorbox{studentbox}{
+    colback=lightGray,
+    colframe=primaryBlue,
+    boxrule=0.5pt,
+    arc=4pt,
+    left=15pt,
+    right=15pt,
+    top=10pt,
+    bottom=10pt
+}
+
+% --- Markers for numbers that are not final yet ---
+% \reported: from the earlier audit on the Mac, not yet reproduced on the PC
+% \pending: still to be measured or checked
+\newif\ifreportednoted
+\newcounter{reportedfn}
+\newcommand{\reported}[1]{#1\ifreportednoted\footnotemark[\number\value{reportedfn}]\else\footnote{Reported from an earlier audit on another machine; being re-checked.}\setcounter{reportedfn}{\value{footnote}}\global\reportednotedtrue\fi}
+\newcommand{\resetreported}{\global\reportednotedfalse}
+\newcommand{\pending}[1]{\textcolor{gray}{[pending: #1]}}
+\DeclareUrlCommand\hash{\urlstyle{tt}\def\UrlBreaks{\do0\do1\do2\do3\do4\do5\do6\do7\do8\do9\do a\do b\do c\do d\do e\do f\do\_}}
+\Urlmuskip=0mu plus 1mu
+
+\begin{document}
+
+% --- Header Section ---
+\begin{center}
+    {\huge \bfseries \color{primaryBlue} Dataset Datasheet} \\[0.2cm]
+    {\large \textbf{Course:} DSPRO2 HS26} \\[0.1cm]
+\end{center}
+
+\vspace{0.4cm}
+
+% --- Student & Project Information ---
+\begin{studentbox}
+    \begin{tabularx}{\textwidth}{l X}
+        \textbf{Project Name:} & Football Analyzer \\
+        \textbf{Student Names:} & Timo Tran, Johan Roth \\
+        \textbf{Date:} & \today \\
+        \textbf{GitHub Repository:} & \url{github.com/LittleBigFatFish/dspro2-sports-analyzer} \\
+    \end{tabularx}
+\end{studentbox}
+
+\vspace{0.3cm}
+
+\noindent We use six datasets: three for detection (Football, Soccana, SoccerNet Tracking), SoccerNet GSR for detection and later the minimap, SkillCorner tracking data for the play analysis, and the football part of MultiSports as an extra player recall test. Each one is described with all fields of the course template. The last part compares them and gives a short zero-shot baseline. Run IDs refer to folders under \texttt{outputs/}; figures are made by \texttt{scripts/datasheet\_figures.py} from these folders.
+
+% =====================================================================
+\section{Dataset 1 of 6: Football Image Dataset}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} audit run \texttt{20261022T191930876487Z} (recounted from \texttt{images.csv}, \texttt{boxes.csv}, \texttt{issues.csv}), overlap runs \texttt{20261103T114625435133Z} and \texttt{20261103T113605747630Z}, scoring run \texttt{20261103T142737368356Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} Football Image Dataset (GitHub \texttt{skaczylo/Football-Image-Dataset}).
+    \item \textbf{Owner / Contact:} GitHub user skaczylo; no other contact given.
+    \item \textbf{Short Description:} 612 frames from football matches with 10,136 boxes in YOLO format for ball, player (goalkeepers included) and referee (linesmen included). Frames come from TV broadcasts, highlight videos and one video game. Split into 512 train and 100 val images.
+    \item \textbf{Version \& Date:} No release tag. Commit \hash{264212872f1bfa6a9a3413f298793474da741aec} (2026-06-23), cloned 2026-10-20 (folder date). SHA-256 of \texttt{data.yaml}: \hash{4333a70db9a10cdf147d28056bfd9674a6c1366318cb3f4c59d6baff9ebe0487}.
+    \item \textbf{Reference:} \url{https://github.com/skaczylo/Football-Image-Dataset}; the README gives a BibTeX entry (skaczylo, 2026). No paper.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} Per the README, a ready-to-use training set for Ultralytics YOLO. Funding and other goals are not stated.
+    \item \textbf{Intended Use:} Detection of ball, player and referee. We compare pretrained YOLOv8n, YOLO12n and YOLO26n at 640 and 1280 px without training; train and val share no source, so val is a fair first test. Later also fine-tuning data.
+    \item \textbf{Out-of-Scope Use:} Claims about unseen matches (match count unknown); video-game frames reported as real footage; ball claims at 640 px; referee results of pretrained models (COCO has no referee class); tracking, possession, identifying people; val as a test set for any model trained on Soccana (see below).
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured: JPEG images, one YOLO text label file per image, \texttt{data.yaml} with class names.
+    \item \textbf{Population:} Professional matches 2024--25 from TV. Train: Bundesliga, Saudi league, J-League, Copa Libertadores, 2024 Community Shield. Val: Netherlands--France, Newcastle--Chelsea and Serbia U21--England U21 (highlights), and the video game eFootball PES 2021. At least 7 competitions on 3 continents. The NED--FRA overlay looks like UEFA women's branding (not checked).
+    \item \textbf{Dataset Size:} 612 images, 10,136 boxes (table). Resolutions: 548 at 1920$\times$1080, 44 at 1280$\times$720, 17 at 640$\times$360, 3 at 854$\times$480. Balls per image: 118 images with none, 488 with one, 6 with two.
+    \item \textbf{Known Gaps / Imbalances:} 44\% of val boxes (790 of 1,807; 43 of 100 images) are from PES 2021; real broadcast val is 57 images with 46 balls from three clips. 11.2 players per referee, 17.7 per ball. Balls are tiny: taking the shorter box side after resizing the longer image side to 640 px, 74 of 83 val balls are under 8 px (median 5.7 px); at 1280 px only 3 of 83 (median 11.4 px). With the longer box side: median 6.5 px, 66 of 83 under 8 px at 640. Missing: rain or snow, amateur and youth games, wide tactical cameras.
+\end{itemize}
+
+\begin{figure}[ht]
+    \begin{minipage}[c]{0.27\textwidth}\small
+        \begin{tabular}{@{}lrr@{}}
+        \toprule
+        & train & val \\
+        \midrule
+        Images & 512 & 100 \\
+        Player & 7,278 & 1,566 \\
+        Referee & 634 & 158 \\
+        Ball & 417 & 83 \\
+        Boxes & 8,329 & 1,807 \\
+        \bottomrule
+        \end{tabular}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.72\textwidth}
+        \includegraphics[width=\textwidth]{figures/football_val.pdf}
+    \end{minipage}
+    \caption{Football Image Dataset. Left: images and boxes per split. (a) Val boxes per source and class. (b) Val ball size after resizing to 640 and 1280 px; dashed line at 8 px.}
+\end{figure}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} Public third-party footage: TV broadcasts, YouTube highlight videos (video IDs in the val file names) and one video game. The train file prefixes are export batches, not matches: \texttt{20250710\_144746} (276 images) mixes Bundesliga (SVW--BOC), Saudi league (QAD--ORO) and J-League (Nagoya); \texttt{20250710\_145737} (194) mixes Copa Libertadores and J-League (Machida--Yokohama); \texttt{20250812} (42) is the 2024 Community Shield (Man City--Man Utd). The number of matches is therefore unknown and larger than the number of batches. We found this by looking at the frames. The val images also appear in Soccana (see Initial Audit Findings), so both likely share an upstream source.
+    \item \textbf{Collection Method:} Frames cut from videos. Sampling rule, frame rate, dates and tools are not documented. Val file names carry a frame index (\texttt{PES\_21\_clip\_mp4-71.jpg}).
+    \item \textbf{Jurisdictions:} Broadcasts from Germany, Saudi Arabia, Japan, South America, England and two international matches. Where the data was collected and labelled is not stated.
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Boxes with class 0 ball, 1 player (goalkeepers included), 2 referee (linesmen included). Staff and crowd are not labelled. For pretrained COCO models, player and referee count as \emph{person}, ball as \emph{sports ball}.
+    \item \textbf{Labeling Process:} ``Manually annotated'' per the README; annotators, tool and guidelines unknown. Picture-in-picture insets are labelled too.
+    \item \textbf{Quality Control:} None documented upstream. Ours: the audit below, a visual check of the problem cases, and a spot-check of 35 images (5 per source) by Johan \pending{error rate with n}.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data; \texttt{data/raw/} is never edited. Exclusion lists or corrected copies go to \texttt{data/processed/}. For inference, images are only resized (letterbox) to 640 or 1280.
+    \item \textbf{Initial Audit Findings:} 0 errors, 31 warnings: 19 box edges past the image border by at most $10^{-6}$ (kept), 11 boxes with a side under 5 px (several visibly wrong) and 1 empty label. Two label errors checked by eye:
+    \begin{itemize}
+        \item \hash{20250710_145737_94e740}: the empty label. The README calls it an intentional background image, but it is a shot before kick-off full of players and referees.
+        \item \hash{20250710_145737_9d4720}: the referee on the pitch is labelled \emph{player}; the VAR official in the inset is labelled \emph{referee}.
+    \end{itemize}
+    6 near-duplicate pairs within a split (dHash distance $\le 4$), none across splits. \textbf{48 of the 100 val images are also in Soccana train} (47 byte-identical, 1 near-identical), all in Soccana's \texttt{v7} group and from all four val sources (PES 20 of 43, NED--FRA 15 of 34, Newcastle--Chelsea 10 of 19, Serbia--England 3 of 4). Football train has no match. The upstream README is inaccurate: it says all images are Full HD (64 are smaller), calls the empty label intentional, and writes the folder as \texttt{football-image-dataset}, which breaks paths on case-sensitive systems.
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} every image has a label file; class counts match the README. \emph{Accuracy:} two known errors, 11 tiny boxes, spot-check \pending{Johan}. \emph{Consistency:} class IDs match \texttt{data.yaml}; 4 resolutions; real and video-game frames mixed. \emph{Timeliness:} matches 2024--25; commit and SHA-256 of every file recorded. \emph{What it supports:} person detection is close to solved (AP50 0.95--0.97 on real val at 1280), the ball is not: ball recall on real val is 11--30\% at 640 and 35--52\% at 1280 ($n=46$), on the video-game clip 0--22\% and 16--30\% ($n=37$).
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} Players, officials, staff and spectators are identifiable; faces are not blurred. No labels for identity, health or ethnicity. The data stays on our machines (\texttt{data/} is not committed); we publish only metrics and at most 3 frames with boxes drawn.
+    \item \textbf{Compliance:} EU AI Act: our tool detects players and the ball to show match statistics. It does not identify people and is not used in a high-risk area, so we see it as minimal risk; it is coursework and not placed on the market (our assessment, to be confirmed with the supervisor). GDPR / nFADP: identifiable people are personal data. They are professionals at public events; we use the images for teaching only, store them locally and do not pass them on.
+    \item \textbf{Consent \& Licensing:} \texttt{LICENSE} grants CC BY 4.0 for images and annotations. The frames come from broadcasts and a Konami video game, so the uploader cannot hold their rights; CC BY 4.0 covers the annotations at most. Consent of the people shown is not mentioned. Coursework use only, images not shared, skaczylo credited.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} JPEG images, YOLO \texttt{.txt} labels, \texttt{data.yaml}, \texttt{LICENSE}, \texttt{README.md}.
+    \item \textbf{Directory Layout:} \texttt{data/raw/Football-Image-Dataset/} with \texttt{images/} and \texttt{labels/}, each split into \texttt{train/} and \texttt{val/}, kept as cloned. Audit results in \texttt{outputs/dataset\_preparation/<run id>/}.
+    \item \textbf{Schema Summary:} Image and label share the base name; one line per box: \texttt{class x\_center y\_center width height}. Our \texttt{boxes.csv} has one row per box in pixels, \texttt{images.csv} one row per image with size and hashes.
+    \item \textbf{Units \& Encodings:} Coordinates normalised to $[0,1]$ by image width and height. Pixel sizes are native unless 640 or 1280 is stated. Run IDs are UTC timestamps; text is UTF-8.
+\end{itemize}
+
+% =====================================================================
+\section{Dataset 2 of 6: Soccana V1}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} the Hugging Face card at the pinned revision, \texttt{data/raw/}\allowbreak\texttt{soccana\_v1.source.json}, audit run \texttt{20261103T113452946760Z}, overlap run \texttt{20261103T114625435133Z}, scoring run \texttt{20261103T142737368356Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} Soccana\_player\_ball\_detection\_v1 (card title ``Soccana\_prb\_v1''), file \texttt{V1.zip}.
+    \item \textbf{Owner / Contact:} Hugging Face user Adit-jain; processing code in the GitHub repository \texttt{Adit-jain/Soccer\_Analysis}.
+    \item \textbf{Short Description:} Detection data for player, referee and ball, merged from Roboflow Universe datasets and, per the card, SoccerNet frames, video-game renders and public footage. Most images were cut into tiles of 160 to 640 px (SAHI slicing) and capped per source. YOLO and COCO labels; train and test split.
+    \item \textbf{Version \& Date:} Revision \hash{9e768912f134a7d68b58ddc9db9bcd3f6fbe39b7} (created 2025-07-26, last change 2025-08-28). \texttt{V1.zip}: 1,341,080,234 bytes, SHA-256 \hash{58f28e4c75b440f2ce67a239b9e44121976f55ae612a9eb8c07dcefb107dc1b6}, downloaded 2026-11-03 and matched against the published digest.
+    \item \textbf{Reference:} No paper. Card: \url{https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1}; code: \url{https://github.com/Adit-jain/Soccer_Analysis}.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} Per the card, a starting point for a general football object detector; a subset of a collection of over one million images.
+    \item \textbf{Intended Use:} Training data only, without the \texttt{v7} group and the excluded images; we train with and without it. Zero-shot check on 500 seeded full frames from train.
+    \item \textbf{Out-of-Scope Use:} Results on its test split (it overlaps with train); results on tiles or renders presented as broadcast performance; claims about generalisation; sharing the data.
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured: images with YOLO text labels, plus COCO JSON files.
+    \item \textbf{Population:} Football scenes from seven source groups, named in the file names (table). 8,250 images (71\%) are tiles (\texttt{\_sahi\_<N>\_} in the name, size at most $N\times N$); 3,423 are full frames, most resized to 640$\times$640, 15 at 7680$\times$4320. The card also names an eighth Roboflow set and SoccerNet, but no file name points to them. Share of video-game renders \pending{not marked in the files}.
+    \item \textbf{Dataset Size:} 11,673 images (8,677 train, 2,996 test), not the 25,000 on the card; the Hugging Face viewer lists 23,372 rows. 64,648 boxes: 55,704 player, 5,344 referee, 3,600 ball.
+    \item \textbf{Known Gaps / Imbalances:} 3,501 empty label files (background tiles). The mix follows fixed caps per source, not content. Tiles change object sizes: in full frames the ball's shorter side at 640 px has a median of 8.1 px (1,267 of 2,710 under 8 px), larger than in Football and SoccerNet. Match dates and leagues unknown.
+\end{itemize}
+
+\begin{center}\small
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Group & Roboflow source (card) & Images & Tiles & Test & Ball \\
+\midrule
+\texttt{v7} & Football Player Detection KUCAB & 3,546 & 2,900 & 1,046 & 635 \\
+\texttt{v3} & Detect Players DGXZ0 & 3,475 & 2,800 & 975 & 945 \\
+\texttt{v12} & Player Detection GKLRL & 1,725 & 1,500 & 425 & 323 \\
+\texttt{v2\_temp} & VA Project & 1,290 & 950 & 290 & 503 \\
+\texttt{tbd\_v2} & Football Detection Test & 797 & 0 & 20 & 653 \\
+\texttt{v5\_temp} & Football EITPT & 700 & 0 & 200 & 491 \\
+\texttt{spt\_v2} & Soccer Player Tracker & 140 & 100 & 40 & 50 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} Third-party public sources, mainly Roboflow Universe uploads (each with its own licence, origin often unclear). The \texttt{v7} group contains 48 of the 100 Football val images, including PES frames, so it shares an upstream source with the Football dataset. Against SoccerNet test: no exact match and no SoccerNet file name.
+    \item \textbf{Collection Method:} Per the card: COCO source sets $\rightarrow$ SAHI slicing at 160/320/640/1280 px with 20\% overlap $\rightarrow$ image limit per source $\rightarrow$ class name mapping $\rightarrow$ COCO to YOLO. Augmented images (background only, noise, rotation) were added.
+    \item \textbf{Jurisdictions:} Not stated.
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Player (goalkeepers included), referee, ball. \texttt{data.yaml}: 0 Player, 1 Ball, 2 Referee. The card's class table (2 = ball) is wrong; its mapping section matches the files. We remap to the Football IDs in our processed copies.
+    \item \textbf{Labeling Process:} Taken over from the source datasets, which used different names and rules (e.g.\ ``Team-A'', ``Joueur'', ``Gardien''), and merged by name. Slicing cuts boxes at tile borders.
+    \item \textbf{Quality Control:} Upstream mentions only a visualisation script. Our 20 overlays per class: players 20 of 20 correct; balls mostly correct, 2 unclear; referees mostly correct, with one likely goalkeeper and one rotated augmented tile.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data (two Ultralytics label caches were not extracted). Exclusion lists and the class remap go to \texttt{data/processed/}.
+    \item \textbf{Initial Audit Findings:} 81 box rows outside the image in 75 images (the COCO file keeps them: 64,729 rows). \textbf{The test split leaks:} 135 test images have a twin in train (16 byte-identical, 28 mirrored, 91 near-identical at dHash distance $\le 4$; 24 checked by eye, all real), and test is augmented. The audit excludes 209 images. The overlap check excludes 71 images: 48 Football val copies and 24 tiles that near-match the foggy SoccerNet clip SNMOT-132 (6 checked, all false positives; one image in both). Whole-image hashing cannot find crops, and \texttt{v7} has 2,900 tiles, so we drop the whole \texttt{v7} group.
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} three image counts (card, viewer, files). \emph{Accuracy:} overlays mostly correct (above). \emph{Consistency:} conflicting class tables; mixed tile sizes; \texttt{data.yaml} points to the uploader's own disk. \emph{Timeliness:} match dates unknown; revision and zip hash pinned. \emph{What it supports:} training only; zero-shot ball recall on full frames is 14--18\% at 640 and 15--19\% at 1280 ($n=395$), person AP50 0.46--0.58, much lower than on Football and SoccerNet.
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} As for the Football dataset; close-up tiles show faces larger. No identity labels. Data stays local; at most 3 frames with boxes published.
+    \item \textbf{Compliance:} As for the Football dataset (EU AI Act minimal risk, to be confirmed; GDPR / nFADP: professionals at public events, teaching use only, stored locally, not passed on).
+    \item \textbf{Consent \& Licensing:} No licence on the Hugging Face page or card, so all rights are reserved by default. The source datasets have their own Roboflow licences \pending{per-source check}. Consent of the people shown is not mentioned. Used only for training in this course, not shared; author and sources credited.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} One ZIP with JPEG images, YOLO \texttt{.txt} labels, COCO JSON files and \texttt{data.yaml}.
+    \item \textbf{Directory Layout:} \texttt{data/raw/soccana\_v1/} (the ZIP's \texttt{V1/} folder) with \texttt{images/} and \texttt{labels/}, each split into \texttt{train/} and \texttt{test/}, plus \texttt{coco\_train\_annotations/}, \texttt{coco\_test\_annotations/} and \texttt{samples/}. Download record in \texttt{data/raw/soccana\_v1.source.json}.
+    \item \textbf{Schema Summary:} YOLO: one label file per image, one line per box. COCO: \texttt{images}, \texttt{annotations} and \texttt{categories} linked by IDs. The source group is the file name prefix.
+    \item \textbf{Units \& Encodings:} YOLO coordinates normalised to $[0,1]$; COCO boxes in pixels as $[x, y, w, h]$. Class IDs differ from the Football dataset (ball 1 instead of 0).
+\end{itemize}
+
+% =====================================================================
+\section{Dataset 3 of 6: SoccerNet Tracking 2023}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} Cioppa et al.\ (2022); \texttt{data/raw/}\allowbreak\texttt{sn\_tracking\_2023.source.json}; view runs \texttt{20261103T125831753014Z} (test) and \texttt{20261103T130958726437Z} (train) in \texttt{outputs/}\allowbreak\texttt{soccernet\_view/}; 1 fps audits \texttt{20261103T113334952545Z} (test) and \texttt{20261103T131205720681Z} (train); scoring run \texttt{20261103T142737368356Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} SoccerNet-Tracking, 2023 challenge release (\texttt{SoccerNet/SN-Tracking-2023}).
+    \item \textbf{Owner / Contact:} The SoccerNet team (A.~Cioppa, S.~Giancola et al.; University of Liège, KAUST); \url{https://www.soccer-net.org}.
+    \item \textbf{Short Description:} 30-second clips from broadcasts of professional football games with tracking labels: a box and a track ID per object and frame. Each track has a role (player, goalkeeper, referee, ball, other), a team side and often a jersey number.
+    \item \textbf{Version \& Date:} Revision \hash{3777f456d908570e10b19e7354744640e77c351e} (uploaded 2026-09-06). \texttt{test.zip}: 8,711,601,474 bytes, SHA-256 \hash{46b248735ac068abc8c0d53c7a868826fa73a9b3b633295c6957f04bb7576716}. \texttt{train.zip}: 9,575,523,385 bytes, SHA-256 \hash{1a185032e2abf6a3babda48179535144d4b557a7fcc457324cce3cb05735db5b}. Both downloaded 2026-11-03 and matched against the published digests. \texttt{challenge2023.zip} is not downloaded.
+    \item \textbf{Reference:} A.~Cioppa et al., ``SoccerNet-Tracking: Multiple Object Tracking Dataset and Benchmark in Soccer Videos'', CVPR Workshops 2022, arXiv:2204.06918; \url{https://huggingface.co/datasets/SoccerNet/SN-Tracking-2023}.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} A research benchmark for multi-object tracking in football broadcasts, used in the yearly SoccerNet challenges.
+    \item \textbf{Intended Use:} Test: our main detection test set at 1 frame per second (1,470 frames; 294 at 1 per 5\,s for CPU runs), later tracking (milestone M3). Train: fine-tuning (1,710 frames at 1 fps). Team sides and jerseys are kept for later team assignment.
+    \item \textbf{Out-of-Scope Use:} Claims beyond these six games; treating consecutive frames as independent samples; identifying players through jersey numbers; views other than the main camera.
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured JPEG frames with semi-structured text (MOT \texttt{.txt}, \texttt{.ini}).
+    \item \textbf{Population:} Broadcast games of professional football: train games 4, 6, 9 and test games 7, 8, 11. League not documented (see card 4). Each clip is linked to one action, e.g.\ corner, shot, foul, card, substitution or goal (train 5 goals; test 1 goal, 1 penalty).
+    \item \textbf{Dataset Size:} 106 clips of 750 frames at 1920$\times$1080 and 25\,fps:
+
+    \begin{center}\small
+    \begin{tabular}{@{}lrrrrrr@{}}
+    \toprule
+    & Clips & Frames & Boxes & Player (incl.\ GK) & Referee & Ball \\
+    \midrule
+    train & 57 & 42,750 & 733,002 & 629,079 & 61,546 & 40,931 \\
+    test & 49 & 36,750 & 564,547 & 484,148 & 44,957 & 34,129 \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    Plus 1,446 / 1,313 \emph{other} boxes. At 1 fps: train 1,710 frames, 1,648 balls; test 1,470 frames, 1,368 balls. Team-labelled tracks: 1,224 / 1,038, about 77\% with a numeric jersey (letters mean unknown).
+    \item \textbf{Known Gaps / Imbalances:} Only six games, so uncertainty is estimated per clip, not per frame; frames in a clip are nearly identical. At 1 fps in test, 114 frames have no ball and 12 have two real balls. Ball shorter side at 640 px: median 5.0 px (1,280 of 1,368 under 8 px). Weather and season are not documented.
+\end{itemize}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} Broadcast videos collected and labelled by the SoccerNet team (see paper). GSR 2025 reuses exactly these frames (card 4). No exact copy and no SoccerNet file name in Soccana.
+    \item \textbf{Collection Method:} Clips of 30\,s at 25\,fps, 1920$\times$1080, from the main broadcast camera.
+    \item \textbf{Jurisdictions:} Not stated; probably Switzerland (see card 4).
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Boxes with track IDs; the role, team side and jersey of each track are in \texttt{gameinfo.ini}. Our mapping: player and goalkeeper $\rightarrow$ player, referee $\rightarrow$ referee, ball $\rightarrow$ ball. \emph{other} (medical staff, in train also the official with the substitution board) is ignored: predictions on it count neither as correct nor as false.
+    \item \textbf{Labeling Process:} Done by the dataset authors; details in the paper. All confidence values are 1.
+    \item \textbf{Quality Control:} Described in the paper. Our 20 overlays per class: class labels correct; a few people are not labelled.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data. Our converter (\texttt{sports\_analyzer/}\allowbreak\texttt{soccernet.py}) writes YOLO views at 1 fps and 1 per 5\,s for each split to \texttt{data/processed/}\allowbreak\texttt{soccernet/}: roles mapped, \emph{other} on an ignore list, frames hard-linked, team and jersey per track in \texttt{tracks.csv}. A code check on the local data confirms that train and test share no game.
+    \item \textbf{Initial Audit Findings:} All four views: 0 errors. 1 fps warnings: test 101 and train 114 boxes at the image edge (rounding, harmless), 11 and 39 boxes under 5 px. The role spelling is inconsistent (``goalkeepers team left'' vs ``goalkeeper team right''). MOT coordinates count from 0.
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} all 106 clips have 750 frames and labels. \emph{Accuracy:} labels correct in the overlays, a few people missing. \emph{Consistency:} one resolution and frame rate. \emph{Timeliness:} 2023 release; revision and zip hashes pinned. \emph{What it supports:} at 1280, person AP50 .86 on test and .83--.84 on train; ball recall .29--.32 on test and .28--.32 on train; at 640 ball recall stays at or below .16.
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} Broadcast footage with identifiable players, officials, medical staff and spectators; faces not blurred. Jersey numbers and team side per track, together with the game, identify players; we do not link them to names. Data stays local; at most 3 frames with boxes published.
+    \item \textbf{Compliance:} As for the Football dataset (EU AI Act minimal risk, to be confirmed; GDPR / nFADP: professionals at public events, teaching use only, stored locally, not passed on).
+    \item \textbf{Consent \& Licensing:} The Hugging Face repository has no licence file or card and is not gated, so we treat it as all rights reserved. The videos belong to the broadcasters. SoccerNet terms of use \pending{Johan}. We cite the paper, use the data for coursework only and do not share it.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} ZIP with JPEG frames, MOT text files and \texttt{.ini} files.
+    \item \textbf{Directory Layout:} \texttt{data/raw/sn\_tracking\_2023/\{train,test\}/SNMOT-<id>/}: frames in \texttt{img1/}, labels in \texttt{gt/gt.txt}, detections in \texttt{det/}, plus \texttt{gameinfo.ini} (game, action, track roles) and \texttt{seqinfo.ini} (size, frame rate, length).
+    \item \textbf{Schema Summary:} \texttt{gt.txt}: one row per box: frame, track ID, left, top, width, height, confidence and three unused columns. \texttt{gameinfo.ini} links track IDs to role, team side and jersey.
+    \item \textbf{Units \& Encodings:} Boxes in pixels, counted from 0; frames numbered from 1 at 25\,fps. Our YOLO views use normalised coordinates and the Football class IDs.
+\end{itemize}
+
+% =====================================================================
+\section{Dataset 4 of 6: SoccerNet Game State Reconstruction 2025}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} Somers et al.\ (2024); \texttt{data/raw/}\allowbreak\texttt{sn\_gsr\_2025.source.json}; audits in \texttt{outputs/gsr\_audit/}: \texttt{20261103T132213222721Z} (valid), \texttt{20261103T133410462890Z} (test), \texttt{20261103T134648540355Z} (train); overlap run \texttt{20261103T135811599228Z}; view run \texttt{20261103T132720723016Z} with audit \texttt{20261103T132920299005Z}; scoring run \texttt{20261103T142737368356Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} SoccerNet Game State Reconstruction (GSR), 2025 challenge release, Hugging Face \texttt{SoccerNet/SN-GSR-2025}.
+    \item \textbf{Owner / Contact:} The SoccerNet team (V.~Somers et al.); \url{https://www.soccer-net.org}.
+    \item \textbf{Short Description:} 30-second broadcast clips labelled for a minimap of the game: per person and frame the image box, pitch position in metres, role, team, jersey and track ID; plus pitch line points.
+    \item \textbf{Version \& Date:} Revision \hash{ce84ee7d9acb2f9fe999ceed2b38e303ffa5efb9} (last change 2024-10-22), label version 1.3. \texttt{valid.zip} 11,169,497,921 bytes, \texttt{test.zip} 8,845,186,210, \texttt{train.zip} 9,755,097,159; downloaded 2026-11-03 and matched against the published digests (SHA-256 in the source file).
+    \item \textbf{Reference:} V.~Somers et al., ``SoccerNet Game State Reconstruction: End-to-End Athlete Tracking and Identification on a Minimap'', CVPR Workshops 2024, arXiv:2404.11335; \url{https://huggingface.co/datasets/SoccerNet/SN-GSR-2025}.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} A benchmark for tracking and identifying every athlete and placing them on a minimap of the pitch.
+    \item \textbf{Intended Use:} Valid is our second detection test set (1 fps, 1,740 frames, 58 clips). Later, ground truth for pitch positions, teams and jerseys (milestone M4).
+    \item \textbf{Out-of-Scope Use:} Training on GSR test or reporting it as a separate result (it is SoccerNet Tracking test); identifying players.
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured JPEG frames with one semi-structured \texttt{Labels-GameState.json} per clip.
+    \item \textbf{Population:} 200 clips in total: valid 58 (games 2, 3, 5), test 49 (7, 8, 11), train 57 (4, 6, 9), and an unlabelled challenge split of 37 clips, not downloaded. ``Raiffeisen Super League'' boards are visible, so the games are probably from the Swiss Super League; this is not documented.
+    \item \textbf{Dataset Size:} Valid: 43,500 frames, 748,666 annotations (619,500 player, 26,020 goalkeeper, 61,847 referee, 40,900 ball, 399 other). Test: 36,750 / 564,547; train: 42,750 / 733,001. Valid at 1 fps: 1,740 frames with 25,897 player, 2,477 referee and 1,636 ball boxes.
+    \item \textbf{Known Gaps / Imbalances:} Only valid (3 games) is new. In valid, 98.5\% of players have a pitch position and 87\% a jersey; goalkeepers never have a jersey.
+\end{itemize}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} SoccerNet broadcast footage. \textbf{GSR test is byte-identical to SoccerNet Tracking test} (36,750 of 36,750 frames, same 49 clips, same boxes) and GSR train is identical to Tracking train. Valid shares no frame and no game with them; one flagged valid clip was checked by eye and is a false positive (same stadium, different match).
+    \item \textbf{Collection Method:} Clips of 30\,s at 25\,fps, all 1920$\times$1080.
+    \item \textbf{Jurisdictions:} Not documented; probably Switzerland (see above).
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Per annotation: image box, \texttt{bbox\_pitch} (bottom left, middle and right of the box in pitch metres), role (player, goalkeeper, referee, ball, other), team (left/right), jersey and track ID; per frame, points on the pitch lines. For detection we use the same mapping as for SoccerNet Tracking.
+    \item \textbf{Labeling Process:} Done by the dataset authors; details in the paper.
+    \item \textbf{Quality Control:} Described in the paper. Ours: the audits below; overlays of the valid view \pending{check}.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data. YOLO view \texttt{data/processed/gsr/valid\_1fps} with the same role mapping and ignore list.
+    \item \textbf{Initial Audit Findings:} 0 errors in all three splits. Warnings (valid / test / train): 35,450 / 24,275 / 36,985 pitch positions off the pitch, mostly referees and the ball, and 11,380 / 9,418 / 4,617 missing pitch positions. The valid view has 0 errors (149 edge and 31 tiny boxes).
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} every frame labelled; pitch positions and jerseys partly missing (above). \emph{Consistency:} one resolution, one label version. \emph{Timeliness:} revision and zip hashes pinned. \emph{What it supports:} on valid at 1280, person AP50 .84--.85 and ball recall .30--.32 (YOLO12n .27), $n=1{,}636$ balls; YOLO26n at 1920 reaches .36.
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} As for SoccerNet Tracking; in addition, team, jersey and pitch position over time describe the movement of identifiable players. We do not link them to names. Data stays local; at most 3 frames with boxes published.
+    \item \textbf{Compliance:} As for the Football dataset (EU AI Act minimal risk, to be confirmed; GDPR / nFADP: professionals at public events, teaching use only, stored locally, not passed on).
+    \item \textbf{Consent \& Licensing:} The Hugging Face page is tagged GPL-3.0, but the ZIPs contain no licence file, and GPL-3.0 is a software licence. The frames are broadcast footage of third parties. SoccerNet terms of use \pending{Johan}. Coursework use only, no sharing, paper cited.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} ZIP per split with JPEG frames and one JSON file per clip.
+    \item \textbf{Directory Layout:} \texttt{data/raw/sn\_gsr\_2025/\{valid,test,train\}/SNGS-<id>/} with \texttt{img1/} and \texttt{Labels-GameState.json}.
+    \item \textbf{Schema Summary:} The JSON has \texttt{info}, \texttt{images} (one per frame), \texttt{annotations} and \texttt{categories}; annotations link to frames by image ID and carry the fields above.
+    \item \textbf{Units \& Encodings:} Image boxes in pixels; pitch positions in metres. Our YOLO view uses normalised coordinates and the Football class IDs.
+\end{itemize}
+
+% =====================================================================
+\section{Dataset 5 of 6: SkillCorner Open Data}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} \texttt{data/raw/}\allowbreak\texttt{skillcorner\_opendata.source.json}; the repository README; audit run \texttt{outputs/}\allowbreak\texttt{skillcorner\_audit/}\allowbreak\texttt{20261103T130555730275Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} SkillCorner Open Data (GitHub \texttt{SkillCorner/opendata}).
+    \item \textbf{Owner / Contact:} SkillCorner, released together with PySport; contact via the repository.
+    \item \textbf{Short Description:} Broadcast tracking data (positions of the 22 players and the ball at 10 fps), event data and phases of play for 20 A-League matches of the 2024/25 season. There are no images.
+    \item \textbf{Version \& Date:} Commit \hash{4340d274572876239c154c90bc507a9b3250a656} (2026-09-14, ``Refresh four matches to dynamic events v3''), cloned 2026-11-03 with Git LFS; 139 files, 1.93\,GB.
+    \item \textbf{Reference:} \url{https://github.com/SkillCorner/opendata} and its README. No paper.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} A SkillCorner and PySport initiative to give researchers and the analytics community access to broadcast tracking data.
+    \item \textbf{Intended Use:} The play-analysis part of our project: possession, passes and pass value. Not used for detection.
+    \item \textbf{Out-of-Scope Use:} Detection or tracking evaluation (no images); claims about other leagues; any use of names or birth dates.
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Structured and semi-structured: JSON (match), JSON lines (tracking), CSV (events, phases, season aggregates).
+    \item \textbf{Population:} A-League 2024/25, 13 clubs, matches from 2024-11-23 to 2025-05-17.
+    \item \textbf{Dataset Size:} 20 matches (the README says 10). 1,244,814 frames at 10 fps, 32.8\,h within periods. 94,361 events: 48,308 passing options, 18,710 player possessions, 17,445 on-ball engagements, 9,898 off-ball runs; 16,072 passes, 13,449 successful. Events CSV with 322 columns, phases CSV with 44. Plus 3 season aggregate CSVs and a body pose sample (309 frames); the full body pose files are on Hugging Face only and not downloaded.
+    \item \textbf{Known Gaps / Imbalances:} 25.7\% of in-play frames have no tracking at all. The ball position is present in 74\% of frames and detected in 60\%. On average 12.5 of the 22 players are detected; 43\% of player positions are extrapolated. One league, one season.
+\end{itemize}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} Commercial data of SkillCorner, released as open data.
+    \item \textbf{Collection Method:} Computer vision on broadcast video at 10 fps. Positions outside the camera view are extrapolated (flag \texttt{is\_detected}). Per SkillCorner, about 97\% of player identities are correct.
+    \item \textbf{Jurisdictions:} Matches in Australia and New Zealand (Auckland FC, Wellington Phoenix).
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} No detection labels. Our ground truth for play analysis: player possessions and passes (start, end, receiver, outcome) from the dynamic events. Start and end positions and outcome are present for 100\% of passes, xThreat for 96\% and EPV for 91\%.
+    \item \textbf{Labeling Process:} Events are derived by SkillCorner from the tracking data.
+    \item \textbf{Quality Control:} The README says some data points are wrong. Our check: a nearest-player possession rule recovers SkillCorner's passes with precision .75 and recall .69, and team possession share within 3 points on average.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None; files are read directly from \texttt{data/raw/}.
+    \item \textbf{Initial Audit Findings:} No duplicate or missing frames, constant 0.1\,s steps. 1,534 player and 1,567 ball positions lie more than 5\,m off the pitch; 14 events have no start position.
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} ball and players often missing or extrapolated (above). \emph{Accuracy:} 97\% correct identities per SkillCorner; our pass check. \emph{Consistency:} one coordinate system, but pitch sizes vary and the attacking direction changes per period. \emph{Timeliness:} 2024/25 season; commit pinned. \emph{What it supports:} ground truth for pass detection and pass value.
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} \texttt{match.json} contains player names and birth dates, which are personal data. We work with player IDs only and do not publish names or birth dates.
+    \item \textbf{Compliance:} GDPR / nFADP apply to the names and birth dates; we keep them local and use only what the analysis needs. EU AI Act: as for the Football dataset.
+    \item \textbf{Consent \& Licensing:} MIT licence, Copyright (c) 2020 SkillCorner. SkillCorner asks users to credit SkillCorner, which we do.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} JSON, JSON lines, CSV; one gzip body pose sample.
+    \item \textbf{Directory Layout:} \texttt{data/raw/}\allowbreak\texttt{skillcorner\_opendata/data/} with \texttt{matches.json}, \texttt{aggregates/}, \texttt{bodypose/} and \texttt{matches/<id>/}, which holds the match JSON (line-ups, pitch, periods), the tracking JSONL, the dynamic events CSV and the phases of play CSV.
+    \item \textbf{Schema Summary:} Tracking: one line per frame with time, period, ball x/y/z, possession and players (ID, x, y, \texttt{is\_detected}). Events link to start and end frames and to player IDs from \texttt{match.json}.
+    \item \textbf{Units \& Encodings:} Metres with the origin at the pitch centre, x along the long side; pitch 104--106 $\times$ 68\,m; 10 fps; times in UTC.
+\end{itemize}
+
+% =====================================================================
+\section{Dataset 6 of 6: MultiSports (SportsAction), Football Part}
+\resetreported
+
+\begin{sloppypar}\noindent\textit{Source:} \texttt{data/raw/}\allowbreak\texttt{sportsaction.source.json}; tube audit \texttt{outputs/}\allowbreak\texttt{sportsaction\_audit/}\allowbreak\texttt{20261103T180916698903Z}; view runs \texttt{20261103T184902825116Z} (val) and \texttt{20261103T190121582614Z} (train) with audits \texttt{20261103T185116295910Z} and \texttt{20261103T230355124665Z}; overlap runs \texttt{20261103T230519199987Z} (Soccana) and \texttt{20261103T230644697099Z} (Football); scoring run \texttt{20261103T234233094667Z}.\end{sloppypar}
+
+\subsection{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name:} MultiSports, Hugging Face \texttt{MCG-NJU/SportsAction}; we use only the football part.
+    \item \textbf{Owner / Contact:} Multimedia Computing Group, Nanjing University (Y.~Li et al.); \url{https://deeperaction.github.io/datasets/multisports.html}.
+    \item \textbf{Short Description:} Short clips of competition broadcasts in which professional athletes marked actions (pass, trap, dribble, tackle, \ldots). Each action is a tube: one box per frame on the player doing it, from start to end of the action.
+    \item \textbf{Version \& Date:} Revision \hash{01600ce7eabbf42a5ee7c82b82f49a11597b3a5f} (last change 2022-12-13). Football \texttt{trainval} 12,261,324,800 bytes and \texttt{test} 5,641,830,400 bytes, downloaded 2026-11-03 and matched against the published SHA-256; the test archive has no labels and is not extracted.
+    \item \textbf{Reference:} Y.~Li et al., ``MultiSports: A Multi-Person Video Dataset of Spatio-Temporally Localized Sports Actions'', ICCV 2021, arXiv:2105.07404; \url{https://huggingface.co/datasets/MCG-NJU/SportsAction}.
+\end{itemize}
+
+\subsection{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} A benchmark for spatio-temporal action detection: which player does which action, where and when.
+    \item \textbf{Intended Use:} A further person-recall test on other leagues and camera views (val, 1,337 frames at 1 fps). Later, labelled passes, traps and tackles for the play analysis (milestone M4).
+    \item \textbf{Out-of-Scope Use:} Person AP or precision, and anything about the ball: most people in a frame are not labelled and the ball never is. Commercial use (licence).
+\end{itemize}
+
+\subsection{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured MP4 videos and one pickle with all labels (Python dictionary of numpy arrays).
+    \item \textbf{Population:} Football broadcasts from YouTube; the clips we checked include the London 2012 Olympics and English club games. Train has 402 clips from 36 source videos, val 132 clips from 12; no source video is in both.
+    \item \textbf{Dataset Size:} Train: 224,879 frames, 6,144 tubes, 114,258 boxes; val: 80,067 frames, 2,153 tubes, 38,538 boxes. At 1 fps (frames with at least one tube): train 3,784 frames with 4,509 boxes, val 1,337 frames with 1,563 boxes.
+    \item \textbf{Known Gaps / Imbalances:} Only 15 football actions, led by short pass (29\% of val tubes) and trap (25\%). At most 5 labelled players per frame. 1,280$\times$720 only. Median box height 72\,px (train) and 79\,px (val).
+\end{itemize}
+
+\subsection{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} Competition videos found by the authors on YouTube and cut into clips; the clip name keeps the YouTube video ID.
+    \item \textbf{Collection Method:} Per the card, only high-resolution videos were kept. All 534 clips are 1,280$\times$720 at 25\,fps, and every video decodes to exactly the annotated number of frames.
+    \item \textbf{Jurisdictions:} Not documented; the games we saw include English ones.
+\end{itemize}
+
+\subsection{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Per tube: action class and one box per frame (frame number, $x_1, y_1, x_2, y_2$ in pixels). For detection every tube box is a \emph{player}; a player doing two actions at once can get two boxes.
+    \item \textbf{Labeling Process:} Professional athletes marked action, start, end and the first box; a tracker drew the other boxes, which crowd workers corrected; every instance was checked again at 5\,fps (from the card).
+    \item \textbf{Quality Control:} As above. Ours: 20 random val overlays checked by eye, boxes fit the players.
+\end{itemize}
+
+\subsection{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data. Frames are decoded with OpenCV like the dataset's own \texttt{generate\_rgb.py} (frame numbers from 1) and written as JPEG to \texttt{data/processed/}\allowbreak\texttt{sportsaction/}\allowbreak\texttt{\{train,val\}\_1fps}.
+    \item \textbf{Initial Audit Findings:} Tubes: 0 errors, 0 warnings in both splits (no gaps, no box outside the image). Views: 0 errors, one rounding warning in train; 16 (val) and 124 (train) near-identical frame pairs from still scenes. In val, 33 of 1,563 boxes overlap another at IoU $\ge 0.5$, mostly an attacker and a defender (dribble and press). Overlap with Soccana and Football: none (one mirrored candidate is a different match). This check only covers the 1\,fps frames.
+    \item \textbf{Quality Dimensions:} \emph{Completeness:} only acting players are labelled. \emph{Consistency:} one resolution, frame counts match. \emph{Timeliness:} revision and archive hashes pinned. \emph{What it supports:} person recall (confidence 0.25, IoU 0.5) at 1280\,px of .90--.92 on val (YOLO12n .92, $n=1{,}563$) and .88--.92 on train ($n=4{,}509$); at 640\,px .83--.88 and .82--.86. The NMS-free head of YOLO26n drops to .77 and .74 at 640. 1920\,px adds nothing on val and 1 point on train.
+\end{itemize}
+
+\subsection{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} Broadcast images of professional players; no names or IDs in the labels. Data stays local; at most 3 frames with boxes published.
+    \item \textbf{Compliance:} As for the Football dataset (EU AI Act minimal risk, to be confirmed; GDPR / nFADP: professionals at public events, teaching use only, stored locally, not passed on).
+    \item \textbf{Consent \& Licensing:} CC BY-NC 4.0; access on Hugging Face requires accepting non-commercial use, which we did with our own account. The videos are third-party broadcast footage. Coursework use only, paper cited.
+\end{itemize}
+
+\subsection{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} TAR per split and sport with MP4 videos; labels in \texttt{multisports\_GT.pkl}.
+    \item \textbf{Directory Layout:} \sloppy\texttt{data/raw/}\allowbreak\texttt{sportsaction/}\allowbreak\texttt{trainval/}\allowbreak\texttt{football/}\allowbreak\texttt{<clip>.mp4}, clips named \texttt{v\_<YouTube ID>\_c<n>}; archives and pickles under \texttt{data/raw/}\allowbreak\texttt{\_downloads/}\allowbreak\texttt{sportsaction/}.
+    \item \textbf{Schema Summary:} \sloppy The pickle holds \texttt{labels} (66 classes over four sports, 15 football), \texttt{train\_videos}, \texttt{test\_videos} (the val list), \texttt{nframes}, \texttt{resolution} and \texttt{gttubes} (per video: class index $\rightarrow$ list of tubes). We load it with a restricted unpickler that only rebuilds numpy arrays.
+    \item \textbf{Units \& Encodings:} Boxes in pixels; frames numbered from 1 at 25\,fps. Our YOLO views use normalised coordinates and the Football class IDs.
+\end{itemize}
+
+% =====================================================================
+\section{Comparison of the Six Datasets}
+\resetreported
+
+\noindent Sources as in each card. Ball size: median shorter ball box side at 640 px input.
+
+\begin{center}\scriptsize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.3cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+\toprule
+ & \textbf{Football Image} & \textbf{Soccana V1} & \textbf{SN Tracking 2023} & \textbf{SN GSR 2025} & \textbf{SkillCorner} & \textbf{MultiSports (football)} \\
+\midrule
+Data & 612 images & 11,673 images & 79,500 frames, 106 clips & 123,000 frames, 164 clips & 20 matches, 1.24\,M frames & 534 clips, 305k frames \\
+Labels & 10,136 boxes & 64,648 boxes & 1,297,549 boxes & 2,046,214 annotations & tracking, 94,361 events & 8,297 action tubes \\
+Ball & 500 boxes, 5.6\,px & 3,600 boxes, 8.1\,px & 75,060 boxes, 5.0\,px & 115,960 boxes & position in 74\% & not labelled \\
+Classes & ball, player, referee & player, ball, referee & roles, team, jersey & as SN Tracking + pitch position & players, ball, events & 15 actions (acting player only) \\
+Images & broadcast + video game & 71\% tiles; renders & broadcast frames & = SN Tracking & none & broadcast clips, 720p \\
+Splits & train 512 / val 100 & train / test (leaks) & train 57 / test 49 clips & valid 58 new & -- & train 402 / val 132 clips \\
+Overlap & 48 val in Soccana & 71 excluded, \texttt{v7} dropped & frames reused by GSR & test, train = SN Tracking & -- & none found \\
+Licence & CC BY 4.0 (annotations) & none & none; cite paper & GPL-3.0 tag & MIT & CC BY-NC 4.0 \\
+Our role & pretrained test; fine-tuning & training only & main test; fine-tuning; tracking & test on valid; minimap & play analysis & person recall; actions \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent\textbf{Zero-shot baseline.} Pretrained YOLOv8n, YOLO12n and YOLO26n (Ultralytics assets v8.4.0, SHA-256 in \texttt{models/MANIFEST.json}), scoring run \texttt{20261103T142737368356Z}, confidence 0.25 and IoU 0.5. At 1280 px, person AP50 is .83--.86 and ball recall .27--.32 on every SoccerNet set; pooled over all 9 games (4,920 frames, clip bootstrap over 164 clips) person AP50 is .84--.85 and ball recall .28--.32. So the results hold across games. For YOLO26n, 1920 instead of 1280 px adds 3--4 points of ball recall on SoccerNet and 4 on real Football, but lowers it on the video-game clip (.22 to .08) and on Soccana (.19 to .13). The NMS-free head of YOLO26n gives slightly lower recall, except on real Football at 640. On MultiSports (run \texttt{20261103T234233094667Z}, which reproduces every number above), the labelled players are found with recall .88--.92 at 1280\,px. \noindent CPU latency on the 100 Football val images (median ms at 640 / 1280; run \texttt{20261103T121139897997Z}): YOLOv8n 33.7 / 86.4, YOLO12n 44.0 / 156.1, YOLO26n 38.7 / 92.7, YOLO26n NMS-free 36.1 / 90.6.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ball_recall.pdf}
+    \caption{Zero-shot ball recall with Wilson 95\% intervals at 640 and 1280 px. ``SoccerNet all 9 games'' pools SN Tracking train and test and GSR valid. Football val is split into real and video game.}
+\end{figure}
+
+
+\subsection{Credits}
+\begin{itemize}
+    \item Football Image Dataset by skaczylo, \url{https://github.com/skaczylo/Football-Image-Dataset} (CC BY 4.0).
+    \item Soccana V1 by Adit-jain, \url{https://huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1}, and the Roboflow Universe datasets listed on its card.
+    \item SoccerNet-Tracking: A.~Cioppa, S.~Giancola, A.~Deliège, L.~Kang, X.~Zhou, Z.~Cheng, B.~Ghanem, M.~Van Droogenbroeck, CVPR Workshops 2022, arXiv:2204.06918.
+    \item SoccerNet Game State Reconstruction: V.~Somers et al., CVPR Workshops 2024, arXiv:2404.11335.
+    \item SkillCorner Open Data by SkillCorner (with PySport), MIT licence, Copyright (c) 2020 SkillCorner, \url{https://github.com/SkillCorner/opendata}.
+    \item MultiSports by Y.~Li et al. (Nanjing University), ICCV 2021, arXiv:2105.07404, CC BY-NC 4.0, \url{https://huggingface.co/datasets/MCG-NJU/SportsAction}.
+    \item YOLOv8, YOLO12 and YOLO26 weights and the \texttt{ultralytics} package by Ultralytics, AGPL-3.0, \url{https://github.com/ultralytics/ultralytics}.
+\end{itemize}
+
+\end{document}

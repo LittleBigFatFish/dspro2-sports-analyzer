@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from sports_analyzer.annotations.yolo import Box, read_labels
-from sports_analyzer.evaluation import evaluate_image, aggregate, remap, GT_MAPPING
+from sports_analyzer.evaluation import evaluate_image, aggregate, remap, GT_MAPPING, average_precision
 
 class BaselineTests(unittest.TestCase):
     def test_duplicate_prediction_is_false_positive(self):
@@ -34,6 +34,20 @@ class BaselineTests(unittest.TestCase):
             path.unlink()
             with self.assertRaises(FileNotFoundError):
                 read_labels(path, 100, 100, {0:'ball'})
+
+    def test_average_precision(self):
+        gt = {'a': [Box('ball', (0, 0, 10, 10))], 'b': [Box('ball', (0, 0, 10, 10))]}
+        perfect = {'a': [Box('ball', (0, 0, 10, 10), .9)], 'b': [Box('ball', (0, 0, 10, 10), .8)]}
+        self.assertEqual(average_precision(gt, perfect, 'ball', .5), 1)
+        # FP ranked first: recall 0.5 at precision 0.5, recall 1 at precision 2/3.
+        ranked = {'a': [Box('ball', (50, 50, 60, 60), .95), Box('ball', (0, 0, 10, 10), .9)],
+                  'b': [Box('ball', (0, 0, 10, 10), .8)]}
+        self.assertAlmostEqual(average_precision(gt, ranked, 'ball', .5), 2/3)
+        missed = {'a': [Box('ball', (0, 0, 10, 10), .9)]}
+        self.assertAlmostEqual(average_precision(gt, missed, 'ball', .5), 51/101)
+        self.assertIsNone(average_precision(gt, perfect, 'person', .5))
+        with self.assertRaises(ValueError):
+            average_precision(gt, {'c': []}, 'ball', .5)
 
     def test_role_mapping(self):
         boxes = remap([Box('referee',(0,0,10,10)), Box('player',(10,10,20,20))], GT_MAPPING, True)

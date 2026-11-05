@@ -1,0 +1,61 @@
+# Paths are relative to the repository root, not to this YAML file.
+models: [models/yolov8n.pt, models/yolo12n.pt, models/yolo26n.pt]
+image_sizes: [640, 1280]
+# Low threshold keeps the full ranking for AP; scoring reads the saved predictions.
+confidence: 0.001
+device: cpu
+output: outputs/comparison
+# Default dataset; choose another entry with --dataset.
+dataset: football
+datasets:
+  football:
+    root: data/raw/Football-Image-Dataset
+    splits: [train, val]
+    # Image SHA-256 values must match this audit before inference starts.
+    audit_run: outputs/dataset_preparation/20261022T191930876487Z
+  soccernet_test_1fps:
+    root: data/processed/soccernet/test_1fps
+    splits: [test]
+    audit_run: outputs/dataset_preparation/20261103T113334952545Z
+  soccernet_test_per5s:
+    root: data/processed/soccernet/test_per5s
+    splits: [test]
+    audit_run: outputs/dataset_preparation/20261103T113351992092Z
+  soccernet_train_1fps:
+    root: data/processed/soccernet/train_1fps
+    splits: [train]
+    audit_run: outputs/dataset_preparation/20261103T131205720681Z
+  # Game State valid; its test and train splits are byte-identical to SoccerNet Tracking, so they are left out.
+  gsr_valid_1fps:
+    root: data/processed/gsr/valid_1fps
+    splits: [valid]
+    audit_run: outputs/dataset_preparation/20261103T132920299005Z
+  # MultiSports football val; only players performing an action are labelled.
+  sportsaction_val_1fps:
+    root: data/processed/sportsaction/val_1fps
+    splits: [val]
+    audit_run: outputs/dataset_preparation/20261103T185116295910Z
+  sportsaction_train_1fps:
+    root: data/processed/sportsaction/train_1fps
+    splits: [train]
+    audit_run: outputs/dataset_preparation/20261103T230355124665Z
+  soccana_train_fullframes:
+    root: data/raw/soccana_v1
+    splits: [train]
+    audit_run: outputs/dataset_preparation/20261103T113452946760Z
+    full_frames_only: true
+    apply_exclusions: true
+    # Overlap with Football val; v7 crops cannot be caught by hashing, so the whole group is dropped.
+    extra_exclusions: [outputs/overlap/20261103T114625435133Z/exclusions.txt]
+    exclude_groups: [v7]
+    max_images: 500
+    seed: 42
+latency:
+  dataset: football
+  split: val
+  images: 100
+  warmup: 5
+  # Deployment-like threshold; NMS cost depends on the number of candidates.
+  confidence: 0.25
+  nms_free_models: [models/yolo26n.pt]
+  output: outputs/latency
