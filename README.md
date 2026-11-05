@@ -39,7 +39,7 @@ Setup verifies the reference image and label contents on repeat runs. Existing i
 ## Beyond the first notebook
 
 - [Baseline method and interpretation](BASELINE_SETUP.md): class mapping, matching, metrics and run manifests.
-- [Datasheet (PDF)](docs/datasheet/main.pdf) · [LaTeX source](docs/datasheet/main.tex): six datasets, provenance, splits and known limitations.
+- [Datasheet (PDF)](docs/datasheet/datasheet_draft.pdf) · [LaTeX source](docs/datasheet/datasheet_draft.tex): six datasets, provenance, licences and known limitations.
 - [Model comparison](configs/model_comparison.yaml) and [scoring](configs/scoring.yaml): separate experiments for YOLOv8n, YOLO12n and YOLO26n. Other datasets, model weights and historical audit/report paths in those configs are **not** prerequisites for either onboarding notebook. Reproducing those experiments requires their inputs and matching audit reports.
 - The web app, video tracking and tactical metrics are separate project goals. Tasks are managed in GitHub Issues and Projects.
 

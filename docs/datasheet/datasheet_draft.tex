@@ -1,0 +1,200 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=0.85in}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{microtype}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage[most]{tcolorbox}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+% --- Custom Colors ---
+\definecolor{primaryBlue}{RGB}{10, 80, 160}
+\definecolor{lightGray}{RGB}{245, 245, 245}
+
+% --- Section Styling ---
+\titleformat{\section}{\large\bfseries\color{primaryBlue}}{}{0em}{}[\titlerule]
+\setlist[itemize]{leftmargin=*, noitemsep, topsep=2pt}
+
+% Open points, shown in red until checked
+\newcommand{\review}[1]{\textcolor{red}{[review: #1]}}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% --- Custom Box for Student Info ---
+\newtcolorbox{studentbox}{
+    colback=lightGray,
+    colframe=primaryBlue,
+    boxrule=0.5pt,
+    arc=4pt,
+    left=15pt,
+    right=15pt,
+    top=10pt,
+    bottom=10pt
+}
+
+\begin{document}
+\sloppy
+
+% --- Header Section ---
+\begin{center}
+    {\huge \bfseries \color{primaryBlue} Dataset Datasheet} \\[0.2cm]
+    {\large \textbf{Course:} DSPRO2 HS26} \\[0.1cm]
+\end{center}
+
+\vspace{0.4cm}
+
+% --- Student & Project Information ---
+\begin{studentbox}
+    \begin{tabularx}{\textwidth}{l X}
+        \textbf{Project Name:} & Football Analyzer \\
+        \textbf{Student Names:} & Timo Tran, Johan Roth \\
+        \textbf{Date:} & \today \\
+        \textbf{GitHub Repository:} & \url{github.com/LittleBigFatFish/dspro2-sports-analyzer} \\
+    \end{tabularx}
+\end{studentbox}
+
+\vspace{0.3cm}
+
+\noindent We use six public football datasets. Five contain images and are used for player and ball detection; SkillCorner contains tracking data for the play analysis. Every field below covers all six.
+
+% --- Section 1: Overview ---
+\section{Dataset Overview}
+\begin{itemize}
+    \item \textbf{Official Name, Owner, Version \& Date, Short Description, Reference:} see Table~\ref{tab:overview}.
+\end{itemize}
+
+\begin{table}[ht]
+\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.1cm} >{\raggedright\arraybackslash}p{2.3cm} L >{\raggedright\arraybackslash}p{3.3cm}@{}}
+\toprule
+\textbf{Official name} & \textbf{Owner} & \textbf{Version, date} & \textbf{Short description} & \textbf{Reference} \\
+\midrule
+Football Image Dataset & skaczylo (GitHub) & Commit \texttt{2642128}, 2026-06-23; downloaded 2026-10-20 & 612 football frames with ball, player and referee boxes in YOLO format. & \url{github.com/skaczylo/Football-Image-Dataset} \\
+Soccana V1 (\path{Soccana_player_ball_detection_v1}) & Adit-jain (Hugging Face) & Revision \texttt{9e76891}, 2025-08-28; downloaded 2026-11-03 & Player, referee and ball boxes merged from Roboflow Universe sets; mostly image tiles. & \url{huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1} \\
+SoccerNet Tracking 2023 & SoccerNet team (University of Liège, KAUST) & Revision \texttt{3777f45}, 2026-09-06; downloaded 2026-11-03 & 30\,s broadcast clips with a tracked box per object, role, team and jersey. & A.~Cioppa et al., CVPR Workshops 2022, arXiv:2204.06918 \\
+SoccerNet Game State Reconstruction 2025 & SoccerNet team & Revision \texttt{ce84ee7}, 2024-10-22, labels v1.3; downloaded 2026-11-03 & Broadcast clips with boxes, pitch positions, teams and jerseys for a minimap. & V.~Somers et al., CVPR Workshops 2024, arXiv:2404.11335 \\
+SkillCorner Open Data & SkillCorner, with PySport & Commit \texttt{4340d27}, 2026-09-14; downloaded 2026-11-03 & Tracking of players and ball at 10\,fps and events for 20 A-League matches; no images. & \url{github.com/SkillCorner/opendata} \\
+MultiSports (football part) & Multimedia Computing Group, Nanjing University & Revision \texttt{01600ce}, 2022-12-13; downloaded 2026-11-03 & Broadcast clips with action tubes: one box per frame on the player doing the action. & Y.~Li et al., ICCV 2021, arXiv:2105.07404 \\
+\bottomrule
+\end{tabularx}
+\caption{The six datasets.}
+\label{tab:overview}
+\end{table}
+
+% --- Section 2: Motivation ---
+\section{Motivation and Intended Use}
+\begin{itemize}
+    \item \textbf{Primary Purpose:} Football: a ready-to-use YOLO training set. Soccana: a starting point for a general football detector. SoccerNet Tracking and GSR: research benchmarks for tracking and minimap reconstruction. SkillCorner: open tracking data for analytics. MultiSports: a benchmark for action detection.
+    \item \textbf{Intended Use:} Comparing pretrained YOLOv8n, YOLO12n and YOLO26n at 640 and 1280\,px on all image datasets, then fine-tuning (Football, Soccana, SoccerNet train). SoccerNet test and GSR valid are the main test sets. Telling the two teams apart: SoccerNet and GSR give the team side of every player, SkillCorner the team of every tracked player. SkillCorner is also the ground truth for possession and passes.
+    \item \textbf{Out-of-Scope Use:} Identifying people; team results on Football, Soccana or MultiSports (no team labels); claims beyond the leagues and games in the data; video-game frames reported as real footage; Soccana test or GSR test/train as separate results (they overlap); person precision or anything about the ball on MultiSports (only acting players are labelled); commercial use.
+\end{itemize}
+
+% --- Section 3: Composition ---
+\section{Composition and Coverage}
+\begin{itemize}
+    \item \textbf{Data Types:} Unstructured: JPEG images and frames (Football, Soccana, SoccerNet, GSR), MP4 videos (MultiSports). Labels as YOLO text, COCO JSON, MOT text, JSON and a pickle. SkillCorner is structured: JSON, JSON lines, CSV.
+    \item \textbf{Population:} Professional football from TV broadcasts. Football: club and national-team matches, among them Bundesliga, LaLiga, Saudi league, J-League, Copa Libertadores, FA Cup and Community Shield, three highlight clips and one video game. Soccana: seven Roboflow source groups, 71\% tiles. SoccerNet and GSR: 9 games, probably the Swiss Super League (boards visible, not documented). MultiSports: YouTube broadcasts, among them the London 2012 Olympics and English club games. SkillCorner: A-League 2024/25.
+    \item \textbf{Dataset Size:} Five image datasets with 440,231 images and frames and 2,273,795 labelled boxes, of which 11,153 frames are used in our tests (Table~\ref{tab:size}).
+    \item \textbf{Known Gaps / Imbalances:} The ball is tiny: median shorter side 5.0--5.6\,px at 640\,px input on SoccerNet and Football. SoccerNet and GSR cover only 9 games. 43 of 100 Football val images are from a video game. Soccana is mostly tiles with 3,501 empty labels. MultiSports labels only acting players and never the ball. SkillCorner has no tracking in 25.7\% of in-play frames. No rain or snow, amateur or youth games.
+\end{itemize}
+
+\begin{table}[ht]
+\centering\footnotesize
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+\textbf{Dataset} & \textbf{Images / frames} & \textbf{Boxes} & \textbf{Ball boxes} & \textbf{Used in tests} \\
+\midrule
+Football Image Dataset & 612 & 10,136 & 500 & 612 \\
+Soccana V1 & 11,673 & 64,648 & 3,600 & 500 \\
+SoccerNet Tracking 2023 (106 clips) & 79,500 & 1,297,549 & 75,060 & 3,180 \\
+SoccerNet GSR 2025, valid (58 clips) & 43,500 & 748,666 & 40,900 & 1,740 \\
+MultiSports, football (534 clips) & 304,946 & 152,796 & -- & 5,121 \\
+\midrule
+\textbf{Image datasets} & \textbf{440,231} & \textbf{2,273,795} & \textbf{120,060} & \textbf{11,153} \\
+\midrule
+SkillCorner (20 matches, tracking) & 1,244,814 & 94,361 events & ball in 74\% & -- \\
+\bottomrule
+\end{tabular}
+\caption{Size per dataset.}
+\label{tab:size}
+\end{table}
+
+% --- Section 4: Collection ---
+\section{Sources and Collection}
+\begin{itemize}
+    \item \textbf{Provenance:} All public, third-party footage. 48 of the 100 Football val images are also in Soccana train, so both share an upstream source. GSR test and train are byte-identical to SoccerNet Tracking. MultiSports shares no frame with Football or Soccana.
+    \item \textbf{Collection Method:} Football: frames cut from videos. Soccana: source sets sliced into tiles and capped per source. SoccerNet and GSR: 30\,s clips at 25\,fps, 1920$\times$1080. MultiSports: YouTube videos cut into clips, 1280$\times$720 at 25\,fps. SkillCorner: computer vision on broadcast video at 10\,fps, positions outside the view extrapolated.
+    \item \textbf{Jurisdictions:} Football: Germany, Spain, England, Saudi Arabia, Japan, South Korea, South America and international matches. SoccerNet and GSR: probably Switzerland. SkillCorner: Australia and New Zealand. Soccana and MultiSports: not documented.
+\end{itemize}
+
+% --- Section 5: Labels ---
+\section{Labels and Targets}
+\begin{itemize}
+    \item \textbf{Target Definition:} Boxes for ball, player (goalkeepers included) and referee, mapped to one shared scheme (0 ball, 1 player, 2 referee). SoccerNet ``other'' (staff) is ignored. Every MultiSports box counts as a player. For COCO models, player and referee count as ``person'', ball as ``sports ball''. Team labels: team side per player in SoccerNet and GSR, team per player in SkillCorner. SkillCorner: possessions and passes.
+    \item \textbf{Labeling Process:} Football: manually annotated. Soccana: taken over from the source sets and merged. SoccerNet and GSR: by the authors (papers). MultiSports: professional athletes marked actions, crowd workers corrected the boxes. SkillCorner: events derived from the tracking data.
+    \item \textbf{Quality Control:} Our audits of every split and 20 overlays per class checked by eye (Soccana, SoccerNet, GSR; 20 val overlays for MultiSports). GSR: players 20 of 20 and balls 18 of 20 correct, referees correct but 4 of 20 hard to see in blurred frames. Football spot-check of 34 images (5 per source, 4 from the smallest): 1 of 580 boxes clearly wrong (a goalkeeper without box), 3 more unclear, no wrong class.
+\end{itemize}
+
+% --- Section 6: Data Quality Audit ---
+\section{Quality Assessment (Data Audit)}
+\begin{itemize}
+    \item \textbf{Preprocessing Steps:} None on the raw data. Converted copies in YOLO format, lists of excluded images and the shared class scheme are kept separately. For inference, images are only resized to 640 or 1280\,px.
+    \item \textbf{Initial Audit Findings:} Football: 0 errors, 31 warnings, two label errors. Soccana: the test split leaks (135 test images have a twin in train), 81 boxes outside the image; 209 images excluded by the audit and 71 by the overlap check, and the group overlapping Football dropped. SoccerNet, GSR, MultiSports: 0 errors. SkillCorner: no missing frames; 1,534 player and 1,567 ball positions lie more than 5\,m beyond the touchline or goal line. We use a 5\,m margin so that normal play near the lines is not counted.
+    \item \textbf{Quality Dimensions:} Completeness: every image has labels; GSR pitch positions and SkillCorner positions are partly missing. Accuracy: labels mostly correct in our overlays; under 1\% of boxes wrong in the Football spot-check. Consistency: different class IDs and formats, unified in our converted copies. Timeliness: known match dates from 2012 to 2025; every version pinned by commit or revision. Zero-shot at 1280\,px: person AP50 .83--.86 on SoccerNet and .95--.97 on real Football val, ball recall only .27--.32 on SoccerNet.
+\end{itemize}
+
+% --- Section 7: Ethics & Governance ---
+\section{Legal, Ethical, and Governance}
+\begin{itemize}
+    \item \textbf{Sensitive Data:} Players, officials and fans are identifiable in all image datasets; faces are not blurred. SoccerNet and GSR give team and jersey per track. SkillCorner contains player names and birth dates; we use player IDs only. Data stays on our computers and is not published; we publish only metrics and at most 3 frames per dataset.
+    \item \textbf{Compliance:} EU AI Act: research and development before a system is placed on the market is excluded (Art.~2(8)), which covers this coursework. A released version would be minimal risk: it does not identify people and is not a high-risk use (Annex~III). GDPR / nFADP: the people shown and the SkillCorner names are personal data; teaching use only, stored locally, not shared.
+    \item \textbf{Consent \& Licensing:} per source in Table~\ref{tab:licence}.
+\end{itemize}
+
+\begin{table}[ht]
+\centering\scriptsize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.0cm} >{\raggedright\arraybackslash}p{2.2cm} L >{\raggedright\arraybackslash}p{3.6cm}@{}}
+\toprule
+\textbf{Dataset} & \textbf{Licence} & \textbf{What the licence says} & \textbf{Consent and our use} \\
+\midrule
+Football Image Dataset & CC BY 4.0 (licence file of the dataset) & Use, share and adapt for any purpose if the author is credited. Covers the annotations; the frames are third-party broadcasts. & Consent of the people shown not mentioned. Coursework only, images not shared, author credited. \\
+Soccana V1 & None & Without a licence all rights stay with the author. The Roboflow source sets have their own licences \review{per-source check}. & Consent not mentioned. Training only, not shared, author and sources credited. \\
+SoccerNet Tracking 2023 & None (no licence file, not gated) & Treated as all rights reserved; the videos belong to the broadcasters. SoccerNet terms of use \review{Johan}. & Consent \review{not checked}. Coursework only, paper cited. \\
+SoccerNet GSR 2025 & GPL-3.0 tag, no licence file & GPL-3.0 is a software licence: copies and changes must stay GPL and include the source. The frames are broadcast footage. SoccerNet terms of use \review{Johan}. & Consent \review{not checked}. Coursework only, paper cited. \\
+SkillCorner Open Data & MIT & Use, copy, change and share freely if the copyright notice is kept; no warranty. SkillCorner asks to be credited. & Contains names and birth dates; we use IDs only. Consent \review{not checked}. SkillCorner credited. \\
+MultiSports & CC BY-NC 4.0 & Share and adapt with credit, non-commercial use only. Access is gated; we accepted the terms with our own account. The videos are third-party YouTube footage. & Consent \review{not checked}. Coursework only, paper cited. \\
+\bottomrule
+\end{tabularx}
+\caption{Licences and consent per dataset.}
+\label{tab:licence}
+\end{table}
+
+% --- Section: Structure & Schema ---
+\section{Dataset Structure and Schema}
+\begin{itemize}
+    \item \textbf{File Formats:} JPEG, YOLO \texttt{.txt}, COCO JSON, MOT \texttt{.txt} and \texttt{.ini}, GSR JSON, MP4 with a pickle, SkillCorner JSON, JSON lines and CSV.
+    \item \textbf{Directory Layout:} One folder per dataset, kept as downloaded and never edited. Our converted copies and the audit results are stored in separate folders.
+    \item \textbf{Schema Summary:} Every image dataset is converted to YOLO: one label file per image, one line per box: \texttt{class x\_center y\_center width height}. SkillCorner: one tracking line per frame; events link to frames and player IDs.
+    \item \textbf{Units \& Encodings:} YOLO coordinates normalised to $[0,1]$; COCO, MOT and GSR boxes in pixels; GSR and SkillCorner positions in metres; UTF-8 text.
+\end{itemize}
+
+% --- Credits ---
+\section{Credits}
+\begin{itemize}
+    \item Football Image Dataset by skaczylo (CC BY 4.0).
+    \item Soccana V1 by Adit-jain and the Roboflow Universe datasets on its card.
+    \item SoccerNet-Tracking: A.~Cioppa et al., CVPR Workshops 2022, arXiv:2204.06918.
+    \item SoccerNet Game State Reconstruction: V.~Somers et al., CVPR Workshops 2024, arXiv:2404.11335.
+    \item SkillCorner Open Data by SkillCorner (with PySport), MIT.
+    \item MultiSports by Y.~Li et al., ICCV 2021, arXiv:2105.07404, CC BY-NC 4.0.
+    \item YOLO models and software by Ultralytics, AGPL-3.0.
+\end{itemize}
+
+\end{document}
