@@ -54,7 +54,8 @@ def show_grid(records, boxes_by_name=None, title='Original images'):
                 x1, y1, x2, y2 = box.xyxy
                 color = colors.get(box.label, '#999999')
                 ax.add_patch(Rectangle((x1, y1), x2-x1, y2-y1, fill=False, edgecolor=color, linewidth=1))
-                ax.text(x1, y1, box.label, fontsize=6, color='white', backgroundcolor=color)
+                caption = box.label if box.score is None else f"{box.label} {box.score:.2f}"
+                ax.text(x1, y1, caption, fontsize=6, color='white', backgroundcolor=color)
         ax.set_title(record['path'].name, fontsize=10)
     fig.suptitle(title)
     fig.tight_layout()
