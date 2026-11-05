@@ -1,6 +1,6 @@
 # Pretrained football baseline
 
-For installation, data, weights and notebook startup, use the [README quickstart](README.md#from-a-fresh-clone-to-the-first-notebook). The following describes Notebook 01 on the seven development images. Notebook 02 explores the complete dataset and also evaluates the validation split.
+For installation, data, weights and notebook startup, use the [README quickstart](README.md#from-a-fresh-clone-to-the-first-notebook). The following describes Notebook 01 on seven seeded training images read directly from the full dataset. Notebook 02 explores the complete dataset and also evaluates the validation split.
 
 ## Workflow and outputs
 

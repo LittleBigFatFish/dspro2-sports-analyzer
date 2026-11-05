@@ -1,8 +1,9 @@
 # Paths are relative to the repository root, not to this YAML file.
-images: data/samples
-labels: data/sample-labels
-# Change to data.yml if that is the actual filename on your machine.
-dataset_yaml: data/source-metadata/data.yaml
+images: data/raw/Football-Image-Dataset/images/train
+labels: data/raw/Football-Image-Dataset/labels/train
+sample_size: 7
+sample_seed: 42
+dataset_yaml: data/raw/Football-Image-Dataset/data.yaml
 model: models/yolo26n.pt
 output: outputs/baseline
 image_sizes: [640, 1280]
