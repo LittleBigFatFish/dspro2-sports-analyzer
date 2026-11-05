@@ -138,7 +138,7 @@ def main() -> int:
         format="%(levelname)s: %(message)s",
     )
 
-    source_directory = PROJECT_ROOT / "data" / "samples"
+    source_directory = PROJECT_ROOT / "data" / "raw" / "Football-Image-Dataset" / "images" / "train"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     report_path = (
         PROJECT_ROOT / "outputs" / "data_audit" / timestamp / "inventory.csv"
