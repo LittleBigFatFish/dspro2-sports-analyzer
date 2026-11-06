@@ -17,10 +17,10 @@ We use six third-party football datasets, including access-controlled SoccerNet 
 | --- | --- | --- | --- | --- |
 | Football Image Dataset | skaczylo (GitHub) | Commit `2642128`, 2026-06-23; downloaded 2026-10-20 | 612 football frames with ball, player and referee boxes in YOLO format. | github.com/skaczylo/Football-Image-Dataset |
 | Soccana V1 (`Soccana_player_ball_detection_v1`) | Adit-jain (Hugging Face) | Revision `9e76891`, 2025-08-28; downloaded 2026-11-03 | Player, referee and ball boxes merged from Roboflow Universe sets; mostly image tiles. | huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1 |
-| SoccerNet Tracking 2023 | SoccerNet team (University of Liège, KAUST) | Revision `3777f45`, 2026-09-06; downloaded 2026-11-03 | 30s broadcast clips with a tracked box per object, role, team and jersey. | A. Cioppa et al., CVPR Workshops 2022, arXiv:2204.06918 |
-| SoccerNet Game State Reconstruction 2025 | SoccerNet team | Revision `ce84ee7`, 2024-10-22, labels v1.3; downloaded 2026-11-03 | Broadcast clips with boxes, pitch positions, teams and jerseys for a minimap. | V. Somers et al., CVPR Workshops 2024, arXiv:2404.11335 |
+| SoccerNet Tracking 2023 | SoccerNet team (University of Liège, KAUST) | Revision `3777f45`, 2026-09-06; downloaded 2026-11-03 | 30s broadcast clips with a tracked box per object, role, team and jersey. | huggingface.co/datasets/SoccerNet/SN-Tracking-2023 |
+| SoccerNet Game State Reconstruction 2025 | SoccerNet team | Revision `ce84ee7`, 2024-10-22, labels v1.3; downloaded 2026-11-03 | Broadcast clips with boxes, pitch positions, teams and jerseys for a minimap. | huggingface.co/datasets/SoccerNet/SN-GSR-2025 |
 | SkillCorner Open Data | SkillCorner, with PySport | Commit `4340d27`, 2026-09-14; downloaded 2026-11-03 | Tracking of players and ball at 10fps and events for 20 A-League matches; no images. | github.com/SkillCorner/opendata |
-| MultiSports (football part) | Multimedia Computing Group, Nanjing University | Revision `01600ce`, 2022-12-13; downloaded 2026-11-03 | Broadcast clips with action tubes: one box per frame on the player doing the action. | Y. Li et al., ICCV 2021, arXiv:2105.07404 |
+| MultiSports (football part) | Multimedia Computing Group, Nanjing University | Revision `01600ce`, 2022-12-13; downloaded 2026-11-03 | Broadcast clips with action tubes: one box per frame on the player doing the action. | huggingface.co/datasets/MCG-NJU/SportsAction |
 
 
 ## Motivation and Intended Use
