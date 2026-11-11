@@ -1,0 +1,20 @@
+# Paths are relative to the repository root, not to this YAML file.
+# Built by scripts/build_training_set.py; every set shares one validation split.
+sets_root: data/processed/training
+# Default set; choose another with --set.
+set: football_only
+model: models/yolo26n.pt
+# The base weights must match their entry here; the AMP check also loads yolo26n.pt from this folder.
+models_manifest: models/MANIFEST.json
+device: 0
+output: outputs/training
+# Passed to Ultralytics train as given. The set's val split scores every epoch and picks best.pt.
+# Label caches are not written, so data/ stays untouched and labels are rescanned on every start.
+train:
+  imgsz: 1280
+  batch: 8
+  epochs: 50
+  seed: 0
+  deterministic: true
+  workers: 4
+  plots: true

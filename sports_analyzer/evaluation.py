@@ -5,7 +5,8 @@ import numpy as np
 from .annotations.yolo import Box
 
 GT_MAPPING = {'player': 'person', 'referee': 'person', 'ball': 'ball'}
-PRED_MAPPING = {'person': 'person', 'sports ball': 'ball'}
+# COCO models emit person and sports ball; fine-tuned models emit the dataset classes.
+PRED_MAPPING = {'person': 'person', 'sports ball': 'ball', **GT_MAPPING}
 
 
 def remap(boxes: list[Box], mapping: dict[str, str], strict: bool) -> list[Box]:
@@ -57,6 +58,22 @@ def match(ground_truth: list[Box], predictions: list[Box], thresholds, ignore=()
                 available[j] = False
         results.append((assigned, in_ignore & (assigned < 0)))
     return order, results
+
+
+def centre(xyxy):
+    return (xyxy[0]+xyxy[2])/2, (xyxy[1]+xyxy[3])/2
+
+
+def centre_match(ground_truth: list[Box], predictions: list[Box], margin: float) -> np.ndarray:
+    """Per GT box, score of the prediction whose centre lies in it grown by margin, else -1; greedy in score order."""
+    found = np.full(len(ground_truth), -1.0)
+    for box in sorted(predictions, key=lambda b: -b.score):
+        x, y = centre(box.xyxy)
+        inside = [j for j, g in enumerate(ground_truth) if found[j] < 0 and g.xyxy[0]-margin <= x <= g.xyxy[2]+margin
+                  and g.xyxy[1]-margin <= y <= g.xyxy[3]+margin]
+        if inside:
+            found[min(inside, key=lambda j: math.dist((x, y), centre(ground_truth[j].xyxy)))] = box.score
+    return found
 
 
 def evaluate_image(ground_truth: list[Box], predictions: list[Box], threshold: float, ignore=()):

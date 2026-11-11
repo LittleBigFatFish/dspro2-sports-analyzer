@@ -17,6 +17,8 @@ GROUPS = [('football', 'split=val|footage=real', 'Football val\nreal'),
           ('soccernet_test_1fps', 'all', 'SN Tracking\ntest'),
           ('gsr_valid_1fps', 'all', 'SN GSR\nvalid'),
           ('soccernet_all_games', 'all', 'SoccerNet\nall 9 games')]
+# Later scoring runs pool only the report games, under this name.
+RENAMED = {'soccernet_all_games': ('soccernet_report_games', 'SoccerNet\n6 report games')}
 MODELS = ['yolov8n', 'yolo12n', 'yolo26n']
 SIZES = {640: '#c0392b', 1280: '#0a50a0'}
 
@@ -66,12 +68,18 @@ def football_val(audit: Path, target: Path):
     save(fig, (left, right), target / 'football_val.pdf')
 
 
+def panels(rows) -> list[tuple]:
+    present = {key[:2] for key in rows}
+    return [(d, g, t) if (d, g) in present or d not in RENAMED else (RENAMED[d][0], g, RENAMED[d][1])
+            for d, g, t in GROUPS]
+
+
 def ball_recall(scoring: Path, target: Path):
     rows = {(r['dataset'], r['group'], r['model'], int(r['imgsz'])): r for r in read_csv(scoring / 'primary.csv')
             if r.get('variant', 'default') == 'default'}
     plt.rcParams.update({'font.size': 8, 'pdf.fonttype': 42})
     fig, axes = plt.subplots(1, len(GROUPS), figsize=(7.0, 2.0), sharey=True)
-    for ax, (dataset, group, title) in zip(axes, GROUPS):
+    for ax, (dataset, group, title) in zip(axes, panels(rows)):
         for offset, (size, color) in zip((-0.12, 0.12), SIZES.items()):
             picked = [rows[(dataset, group, m, size)] for m in MODELS]
             values = [float(r['ball_recall']) for r in picked]

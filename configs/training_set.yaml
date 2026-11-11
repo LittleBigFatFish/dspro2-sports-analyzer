@@ -1,0 +1,65 @@
+# Paths are relative to the repository root, not to this YAML file.
+output: data/processed/training
+runs: outputs/training_set
+# dHash candidates near validation or report images are dropped, not reviewed.
+near_duplicate_distance: 4
+jpeg_quality: 95
+sources:
+  football:
+    kind: yolo
+    root: data/raw/Football-Image-Dataset
+    split: train
+    audit_run: outputs/dataset_preparation/20261103T113017913421Z
+    classes: {0: ball, 1: player, 2: referee}
+    # The four other matches; the two 20250710 compilations stay in train. Quoted, else YAML reads ints.
+    val_groups: ['20250812_101950', '20250812_101951', '20250812_102022', '20250812_102037',
+                 '20250812_102038', '20250812_102039', '20250812_102508', '20250812_102527',
+                 '20250812_102528', '20250812_102532', '20250812_102533', '20250812_103112',
+                 '20250812_103121']
+    licence: CC BY 4.0
+    credit: skaczylo, Football Image Dataset, github.com/skaczylo/Football-Image-Dataset, commit 2642128
+  soccana:
+    kind: yolo
+    root: data/raw/soccana_v1
+    split: train
+    audit_run: outputs/dataset_preparation/20261103T113452946760Z
+    full_frames_only: true
+    apply_exclusions: true
+    # Overlap with Football val and SoccerNet test; v7 crops cannot be caught by hashing.
+    extra_exclusions: [outputs/overlap/20261103T114625435133Z/exclusions.txt]
+    exclude_groups: [v7]
+    classes: {0: player, 1: ball, 2: referee}
+    # restore: widen square frames to 16:9; drop: keep only frames that were never squashed.
+    squashed_frames: restore
+    # Frames rotated by 90 degrees (augmentation), judged on the source image: the median player or
+    # referee box width/height, scaled as an upright 16:9 frame would show it, above this value.
+    # Upright frames reach at most 2.6, rotated ones start at 3.8; frames without people are kept.
+    drop_rotated: true
+    rotated_width_height: 3.0
+    licence: No aggregate licence declared; upstream Roboflow licences apply, five of eight sources CC BY 4.0
+    credit: Adit-jain, Soccana_player_ball_detection_v1, huggingface.co/datasets/Adit-jain/Soccana_player_ball_detection_v1, revision 9e76891
+  soccernet:
+    kind: soccernet
+    root: data/raw/sn_tracking_2023/train
+    classes: {ball: ball, player: player, goalkeeper: player, referee: referee}
+    drop_roles: [other]
+    train_games: [4, 6]
+    train_step: 5
+    val_games: [9]
+    val_step: 25
+    licence: SoccerNet research terms (NDA), non-commercial research, no redistribution
+    credit: Cioppa et al., SoccerNet-Tracking, arXiv 2204.06918, huggingface.co/datasets/SoccerNet/SN-Tracking-2023
+# Never trained or validated on; their audits hold the dHash values.
+report_sets:
+  football_val: {audit_run: outputs/dataset_preparation/20261103T113017913421Z, split: val}
+  soccernet_test_1fps: {audit_run: outputs/dataset_preparation/20261103T113334952545Z, split: test}
+  gsr_valid_1fps: {audit_run: outputs/dataset_preparation/20261103T132920299005Z, split: valid}
+# Same footage in other folders; GSR test equals SoccerNet test.
+report_folders: [data/raw/sn_tracking_2023/test, data/raw/sn_gsr_2025/test, data/raw/sn_gsr_2025/valid,
+                 data/processed/soccernet/test_per5s, data/processed/gsr/test_1fps]
+report_games: [2, 3, 5, 7, 8, 11]
+# Every set shares the validation images: Football val_groups and SoccerNet val_games.
+sets:
+  football_only: [football]
+  combined_no_soccana: [football, soccernet]
+  combined: [football, soccernet, soccana]

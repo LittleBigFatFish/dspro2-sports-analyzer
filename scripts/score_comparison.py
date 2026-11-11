@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 from sports_analyzer.annotations.yolo import Box, load_names
 from sports_analyzer.comparison import new_run_dir, view_digest
 from sports_analyzer.dataset_preparation import git_state, sha256
-from sports_analyzer.evaluation import (GT_MAPPING, PRED_MAPPING, remap, match, ranked_curve,
+from sports_analyzer.evaluation import (GT_MAPPING, PRED_MAPPING, remap, match, centre_match, ranked_curve,
                                         interpolated_ap, wilson)
 
 LABELS = ('person', 'ball')
@@ -27,6 +27,12 @@ FIELDS = ['run_id', 'dataset', 'model', 'variant', 'imgsz', 'group', 'metric', '
 def read_csv(path: Path) -> list[dict]:
     with Path(path).open(encoding='utf-8', newline='') as stream:
         return list(csv.DictReader(stream))
+
+
+def model_name(model) -> str:
+    # Fine-tuned weights are named by their run, outputs/training/<run>/weights/best.pt.
+    path = Path(model)
+    return f'{path.parents[1].name}/{path.stem}' if path.parent.name == 'weights' else path.stem
 
 
 def variant(manifest) -> str:
@@ -108,13 +114,15 @@ def size_bin(side: float, edges) -> str:
     return f'<{low}' if side < low else f'{low}-{high}' if side <= high else f'>{high}'
 
 
-def score_images(truth, predictions, sizes, ignore, imgsz, thresholds, ignore_iou, edges):
+def score_images(truth, predictions, sizes, ignore, imgsz, thresholds, ignore_iou, edges, margin):
     # A confidence cut keeps a prefix of the ranking, so one pass serves every cut.
     scored = {}
     for name, boxes in truth.items():
         for label in LABELS:
             gt = [b for b in boxes if GT_MAPPING[b.label] == label]
             pred = [b for b in predictions.get(name, []) if b.label == label]
+            if label == 'ball':
+                scored[name, 'ball_centre'] = centre_match(gt, pred, margin)
             order, results = match(gt, pred, thresholds, ignore.get(name, ()), ignore_iou)
             scores = np.array([pred[i].score for i in order], float)
             classes = np.array([b.label for b in gt], str)
@@ -131,6 +139,10 @@ def pooled(scored, names, label, threshold):
     return [np.concatenate([p[i] for p in parts]) if parts else np.array([]) for i in range(5)]
 
 
+def centre_scores(scored, names):
+    return np.concatenate([scored[n, 'ball_centre'] for n in names] or [np.zeros(0)])
+
+
 def ap(scores, matched, total):
     return interpolated_ap(*ranked_curve(scores, matched, total)) if total else None
 
@@ -141,13 +153,16 @@ def proportion(metric, hits, n):
 
 
 def group_metrics(scored, names, settings, full=True) -> list[dict]:
-    c, t = settings['report_confidence'], settings['match_iou']
+    c, t, m = settings['report_confidence'], settings['match_iou'], settings['ball_centre_margin']
     rows = []
     for label in LABELS:
         scores, matched, gt_scores, classes, bins = pooled(scored, names, label, t)
         rows.append({'metric': f'{label}_AP50', 'value': ap(scores, matched, len(gt_scores)),
                      'low': None, 'high': None, 'n': len(gt_scores)})
         rows.append(proportion(f'{label}_recall_c{c}_iou{t}', (gt_scores >= c).sum(), len(gt_scores)))
+        if label == 'ball':
+            centres = centre_scores(scored, names)
+            rows.append(proportion(f'ball_centre_recall_c{c}_m{m}px', (centres >= c).sum(), len(centres)))
         if not full:
             continue
         values = [ap(*pooled(scored, names, label, u)[:2], len(gt_scores)) for u in settings['ap_iou']]
@@ -226,20 +241,21 @@ def write_csv(path: Path, rows, fields):
 
 
 def primary_table(rows, notes, settings, small):
-    c, t = settings['report_confidence'], settings['match_iou']
+    c, t, m = settings['report_confidence'], settings['match_iou'], settings['ball_centre_margin']
     wanted = {'images': 'images', 'person_AP50': 'person_AP50', 'ball_AP50': 'ball_AP50',
-              f'person_recall_c{c}_iou{t}': 'person_recall', f'ball_recall_c{c}_iou{t}': 'ball_recall'}
+              f'person_recall_c{c}_iou{t}': 'person_recall', f'ball_recall_c{c}_iou{t}': 'ball_recall',
+              f'ball_centre_recall_c{c}_m{m}px': 'ball_centre_recall'}
     table = defaultdict(dict)
     for row in rows:
         name = wanted.get(row['metric'])
         if name is None or (row['run_id'], row['group']) in small:
             continue
-        values = table[row['dataset'], row['group'], Path(row['model']).stem, row['variant'], row['imgsz'], row['run_id']]
+        values = table[row['dataset'], row['group'], model_name(row['model']), row['variant'], row['imgsz'], row['run_id']]
         if name == 'images':
             values['images'] = row['value']
             continue
         values.update({name: row['value'], f'{name}_low': row['low'], f'{name}_high': row['high']})
-        if 'recall' in name:
+        if name in ('person_recall', 'ball_recall'):
             values[name.replace('recall', 'n')] = row['n']
     return sorted(({'dataset': dataset, 'group': group, 'note': notes.get((dataset, group), ''), 'model': model,
                     'variant': name, 'imgsz': imgsz, 'run_id': run_id, **values}
@@ -250,7 +266,8 @@ def primary_table(rows, notes, settings, small):
 PRIMARY_FIELDS = ['dataset', 'group', 'note', 'model', 'variant', 'imgsz', 'run_id', 'images',
                   'person_AP50', 'person_AP50_low', 'person_AP50_high', 'ball_AP50', 'ball_AP50_low', 'ball_AP50_high',
                   'person_recall', 'person_recall_low', 'person_recall_high', 'person_n',
-                  'ball_recall', 'ball_recall_low', 'ball_recall_high', 'ball_n']
+                  'ball_recall', 'ball_recall_low', 'ball_recall_high', 'ball_n',
+                  'ball_centre_recall', 'ball_centre_recall_low', 'ball_centre_recall_high']
 
 
 def cross_check(rows, settings, base: Path):
@@ -304,7 +321,7 @@ def ball_figure(target, rows, panels, settings, colours):
                             yerr=[[row['value']-row['low']], [row['high']-row['value']]], fmt='os^'[k % 3],
                             color=colours[k], markersize=6, capsize=3, lw=1.5,
                             label=None if f'imgsz {size}' in ax.get_legend_handles_labels()[1] else f'imgsz {size}')
-        ax.set_xticks(range(len(models)), [Path(m).stem + ('' if v == 'default' else f'\n{v}') for m, v in models],
+        ax.set_xticks(range(len(models)), [model_name(m) + ('' if v == 'default' else f'\n{v}') for m, v in models],
                       fontsize=8)
         ax.set_title(f'{title_of(settings, dataset)}\n{group} (n={n} balls)', fontsize=9)
         ax.set_ylim(0, 1)
@@ -354,7 +371,7 @@ def score_run(folder: Path, manifest, settings, thresholds, truths: dict):
     truth, sizes = truths[key]
     ignore = load_ignore(root)
     scored = score_images(truth, predictions, sizes, ignore, manifest['imgsz'], thresholds,
-                          settings['ignore_iou'], settings['ball_size_edges'])
+                          settings['ignore_iou'], settings['ball_size_edges'], settings['ball_centre_margin'])
     return records, scored, sum(len(v) for k, v in ignore.items() if k in truth)
 
 
@@ -461,7 +478,9 @@ def main():
                 'notes': {f'{d} {g}': n for (d, g), n in notes.items() if n},
                 'interval_methods': {'recall_precision': 'Wilson 95%, n = ground-truth boxes (recall) or kept predictions (precision)',
                                      'AP50': 'cluster bootstrap by clip, percentile 95%, dataset or pool total only, where at least '
-                                             f'{settings["bootstrap"]["min_clusters"]} clips'},
+                                             f'{settings["bootstrap"]["min_clusters"]} clips',
+                                     'ball_centre_recall': f'predicted ball centre inside the truth box grown by '
+                                                           f'{settings["ball_centre_margin"]} px, greedy in score order; Wilson 95%'},
                 'git': git_state(), 'python': platform.python_version(), 'numpy': np.__version__,
                 'matplotlib': matplotlib.__version__,
                 'code_sha256': {'script': sha256(Path(__file__)),
