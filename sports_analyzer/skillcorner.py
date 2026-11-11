@@ -1,10 +1,11 @@
-"""SkillCorner open data loader and possession rules."""
+"""SkillCorner open data loader; the possession rules live in analytics."""
 from bisect import bisect_left, bisect_right
 from collections import Counter
 from pathlib import Path
 import csv
 import json
-import math
+
+from sports_analyzer import analytics
 
 FPS = 10
 
@@ -54,18 +55,17 @@ def iter_frames(path):
                 raise ValueError(f'{path}:{number}: {error.msg}') from None
 
 
+def analytics_frame(frame, teams=None):
+    ball, teams = frame['ball_data'], teams or {}
+    xy = lambda item: None if item['x'] is None or item['y'] is None else (item['x'], item['y'])
+    return dict(frame=frame['frame'], period=frame['period'],
+                ball=None if xy(ball) is None else (ball['x'], ball['y'], ball['z']),
+                players=[dict(id=p['player_id'], team=teams.get(p['player_id']), role='player', position=xy(p))
+                         for p in frame['player_data']])
+
+
 def nearest_player(frame):
-    ball = frame['ball_data']
-    if ball['x'] is None or ball['y'] is None:
-        return None, None
-    best, distance = None, None
-    for player in frame['player_data']:
-        if player['x'] is None or player['y'] is None:
-            continue
-        d = math.hypot(player['x']-ball['x'], player['y']-ball['y'])
-        if distance is None or d < distance:
-            best, distance = player['player_id'], d
-    return best, distance
+    return analytics.nearest(analytics_frame(frame))
 
 
 def frame_record(frame):
@@ -220,41 +220,12 @@ def provided_owners(records):
 
 def possessions(owners, hold=3):
     """The ball changes owner only after `hold` consecutive frames."""
-    if hold < 1:
-        raise ValueError('Hold must be at least one frame')
-    segments, current, candidate, streak, start, last = [], None, None, 0, None, None
-    for frame, period, player in owners:
-        if current is not None and period != current['period']:
-            current = None
-        if last is None or frame != last[0] + 1 or period != last[1]:
-            candidate, streak = None, 0
-        last = (frame, period)
-        if period is None or player is None:
-            candidate, streak = None, 0
-            continue
-        if player == candidate:
-            streak += 1
-        else:
-            candidate, streak, start = player, 1, frame
-        if current is not None and player == current['player']:
-            current['end'] = frame
-        elif streak >= hold:
-            current = dict(player=player, period=period, start=start, end=frame)
-            segments.append(current)
-    return segments
+    return analytics.possessions(owners, hold / FPS, FPS)
 
 
 def transitions(segments, teams, max_gap=50):
-    found = []
-    for a, b in zip(segments, segments[1:]):
-        if a['period'] != b['period'] or b['start'] - a['end'] > max_gap:
-            continue
-        team_a, team_b = teams.get(a['player']), teams.get(b['player'])
-        if team_a is None or team_b is None:
-            continue
-        found.append(dict(frame=b['start'], passer=a['player'], receiver=b['player'], team=team_a,
-                          kind='pass' if team_a == team_b else 'turnover', gap=b['start'] - a['end']))
-    return found
+    # Gaps in frames; pairs with a player of unknown team are skipped.
+    return [t for t in analytics.passes(segments, teams, max_gap / FPS, FPS) if t['kind'] != 'transfer']
 
 
 def event_transitions(events):
