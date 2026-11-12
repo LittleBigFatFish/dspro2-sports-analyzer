@@ -1,6 +1,8 @@
 """Local detection baseline, CPU by default. No implicit weight downloads."""
 from pathlib import Path
 from time import perf_counter
+from PIL import Image
+
 from .annotations.yolo import Box
 
 class Detector:
@@ -16,10 +18,20 @@ class Detector:
     def predict(self, image_path: Path, imgsz: int, confidence: float):
         if not image_path.is_file():
             raise FileNotFoundError(image_path)
+        return self._predict(str(image_path), imgsz, confidence)
+
+    def predict_image(self, image: Image.Image, imgsz: int, confidence: float):
+        """Detect objects in a decoded image without a temporary upload file."""
+        if not isinstance(image, Image.Image):
+            raise TypeError('predict_image expects a decoded PIL image')
+        rgb = image if image.mode == 'RGB' else image.convert('RGB')
+        return self._predict(rgb, imgsz, confidence)
+
+    def _predict(self, source: str | Image.Image, imgsz: int, confidence: float):
         if type(imgsz) is not int or imgsz <= 0 or not 0 <= confidence <= 1:
             raise ValueError('Invalid image size or confidence')
         start = perf_counter()
-        result = self.model.predict(source=str(image_path), device=self.device, imgsz=imgsz,
+        result = self.model.predict(source=source, device=self.device, imgsz=imgsz,
                                     conf=confidence, nms=self.nms, rect=True, save=False, verbose=False)[0]
         elapsed_ms = (perf_counter()-start)*1000
         if result.boxes is None:

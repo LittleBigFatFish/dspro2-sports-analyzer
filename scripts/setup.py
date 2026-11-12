@@ -99,14 +99,25 @@ def environment():
     if len(torch_pins) != 2:
         raise ValueError("Missing torch/torchvision version in requirements-cpu.txt")
     run(PYTHON, "-m", "pip", "install", "--index-url", "https://download.pytorch.org/whl/cpu", *torch_pins)
-    run(PYTHON, "-m", "pip", "install", "-r", "requirements-cpu.txt", "-r", "requirements-notebook.txt")
+    run(PYTHON, "-m", "pip", "install", "-r", "requirements-cpu.txt", "-r", "requirements-notebook.txt",
+        "-r", "requirements-app.txt")
     run(PYTHON, "-m", "pip", "check")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", nargs="?", default="setup", choices=["setup", "lab"])
+    parser.add_argument("action", nargs="?", default="setup", choices=["setup", "lab", "app"])
     args = parser.parse_args()
+    if args.action == "app":
+        if not PYTHON.is_file():
+            raise FileNotFoundError("Run setup before opening the app.")
+        run(PYTHON, "-c", "import importlib.util, sys; "
+            "sys.exit(0 if importlib.util.find_spec('streamlit') else "
+            "'Streamlit missing. Run scripts/setup.py to install app dependencies.')")
+        run(PYTHON, "-m", "streamlit", "run", "app/streamlit_app.py",
+            "--server.address=127.0.0.1", "--server.maxUploadSize=10",
+            "--browser.gatherUsageStats=false")
+        return
     if args.action == "lab":
         if not PYTHON.is_file():
             raise FileNotFoundError("Run setup before opening JupyterLab.")
@@ -119,7 +130,8 @@ def main():
     weights()
     run(PYTHON, "-c", "import torch, torchvision, jupyterlab, ipykernel; from ultralytics import YOLO; "
         "m=YOLO('models/yolo26n.pt'); print('Loaded:', m.task, '| torch:', torch.__version__)")
-    print("Ready: 512 train + 100 validation images. Open Notebook 02 with scripts/setup.py lab.")
+    print("Ready: 512 train + 100 validation images. "
+          "Open Notebook 02 with scripts/setup.py lab or the web app with scripts/setup.py app.")
 
 
 if __name__ == "__main__":
